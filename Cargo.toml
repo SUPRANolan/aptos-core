@@ -593,7 +593,7 @@ warp = { version = "0.3.3", features = ["tls"] }
 warp-reverse-proxy = "0.5.0"
 which = "4.2.5"
 # using a fork of x25519-dalek until zeroize 1.5.7 is released in order to fix a build issue
-x25519-dalek = { git ="https://github.com/lemonxah/x25519-dalek.git" }
+x25519-dalek = { git ="https://github.com/Entropy-Foundation/x25519-dalek.git", rev = "2c83d2644256bc13b7895c8251abd9c7f804f50b" }
 
 # MOVE DEPENDENCIES
 move-abigen = { path = "third_party/move/move-prover/move-abigen" }
