@@ -3,7 +3,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+// use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::runtime::{Builder, Runtime};
 
 /// The max thread name length before the name will be truncated
@@ -23,16 +23,16 @@ pub fn spawn_named_runtime(thread_name: String, num_worker_threads: Option<usize
     }
 
     // Create the runtime builder
-    let atomic_id = AtomicUsize::new(0);
-    let thread_name_clone = thread_name.clone();
+    // let atomic_id = AtomicUsize::new(0);
+    // let thread_name_clone = thread_name.clone();
     let mut builder = Builder::new_multi_thread();
-    builder
-        .thread_name_fn(move || {
-            let id = atomic_id.fetch_add(1, Ordering::SeqCst);
-            format!("{}-{}", thread_name_clone, id)
-        })
-        .disable_lifo_slot()
-        .enable_all();
+    // builder
+    //     .thread_name_fn(move || {
+    //         let id = atomic_id.fetch_add(1, Ordering::SeqCst);
+    //         format!("{}-{}", thread_name_clone, id)
+    //     })
+    //     .disable_lifo_slot()
+    //     .enable_all();
     if let Some(num_worker_threads) = num_worker_threads {
         builder.worker_threads(num_worker_threads);
     }
