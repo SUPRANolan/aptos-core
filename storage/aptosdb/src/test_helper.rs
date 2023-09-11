@@ -2,7 +2,7 @@
 // Parts of the project are originally copyright © Meta Platforms, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-///! This module provides reusable helpers in tests.
+//! This module provides reusable helpers in tests.
 use super::*;
 use crate::{
     jellyfish_merkle_node::JellyfishMerkleNodeSchema, schema::state_value::StateValueSchema,
@@ -60,13 +60,13 @@ pub(crate) fn update_store(
         root_hash = store
             .merklize_value_set(
                 jmt_update_refs(&jmt_updates),
-                None,
                 version,
                 version.checked_sub(1),
             )
             .unwrap();
         let ledger_batch = SchemaBatch::new();
         let sharded_state_kv_batches = new_sharded_kv_schema_batch();
+        let state_kv_metadata_batch = SchemaBatch::new();
         store
             .put_value_sets(
                 vec![&sharded_value_state_set],
@@ -75,6 +75,9 @@ pub(crate) fn update_store(
                 None,
                 &ledger_batch,
                 &sharded_state_kv_batches,
+                &state_kv_metadata_batch,
+                /*put_state_value_indices=*/ false,
+                /*skip_usage=*/ false,
             )
             .unwrap();
         store
@@ -84,7 +87,7 @@ pub(crate) fn update_store(
             .unwrap();
         store
             .state_kv_db
-            .commit(version, sharded_state_kv_batches)
+            .commit(version, state_kv_metadata_batch, sharded_state_kv_batches)
             .unwrap();
     }
     root_hash
@@ -513,14 +516,25 @@ fn get_events_by_event_key(
         };
 
         let events: Vec<_> = itertools::zip_eq(events, expected_seq_nums)
-            .map(|(e, _)| (e.transaction_version, e.event))
-            .collect();
+            .map(|(e, _)| Ok((e.transaction_version, e.event)))
+            .collect::<Result<_>>()
+            .unwrap();
 
         let num_results = events.len() as u64;
         if num_results == 0 {
             break;
         }
-        assert_eq!(events.first().unwrap().1.sequence_number(), cursor);
+        assert_eq!(
+            events
+                .first()
+                .unwrap()
+                .1
+                .clone()
+                .v1()
+                .unwrap()
+                .sequence_number(),
+            cursor
+        );
 
         if order == Order::Ascending {
             if cursor + num_results > last_seq_num {
@@ -570,11 +584,17 @@ fn verify_events_by_event_key(
                 .first()
                 .expect("Shouldn't be empty")
                 .1
+                .clone()
+                .v1()
+                .unwrap()
                 .sequence_number();
             let last_seq = events
                 .last()
                 .expect("Shouldn't be empty")
                 .1
+                .clone()
+                .v1()
+                .unwrap()
                 .sequence_number();
 
             let traversed = get_events_by_event_key(
@@ -613,10 +633,12 @@ fn group_events_by_event_key(
     let mut event_key_to_events: HashMap<EventKey, Vec<(Version, ContractEvent)>> = HashMap::new();
     for (batch_idx, txn) in txns_to_commit.iter().enumerate() {
         for event in txn.events() {
-            event_key_to_events
-                .entry(*event.key())
-                .or_default()
-                .push((first_version + batch_idx as u64, event.clone()));
+            if let ContractEvent::V1(v1) = event {
+                event_key_to_events
+                    .entry(*v1.key())
+                    .or_default()
+                    .push((first_version + batch_idx as u64, event.clone()));
+            }
         }
     }
     event_key_to_events.into_iter().collect()
@@ -868,7 +890,7 @@ pub fn verify_committed_transactions(
 pub fn put_transaction_info(db: &AptosDB, version: Version, txn_info: &TransactionInfo) {
     let batch = SchemaBatch::new();
     db.ledger_store
-        .put_transaction_infos(version, &[txn_info.clone()], &batch)
+        .put_transaction_infos(version, &[txn_info.clone()], &batch, &batch)
         .unwrap();
     db.ledger_db.transaction_db().write_schemas(batch).unwrap();
 }

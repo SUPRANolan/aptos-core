@@ -309,36 +309,45 @@ impl EventStore {
         &self,
         version: u64,
         events: &[ContractEvent],
+        skip_index: bool,
         batch: &SchemaBatch,
-    ) -> Result<HashValue> {
+    ) -> Result<()> {
         // Event table and indices updates
         events
             .iter()
             .enumerate()
             .try_for_each::<_, Result<_>>(|(idx, event)| {
-                batch.put::<EventSchema>(&(version, idx as u64), event)?;
-                batch.put::<EventByKeySchema>(
-                    &(*event.key(), event.sequence_number()),
-                    &(version, idx as u64),
-                )?;
-                batch.put::<EventByVersionSchema>(
-                    &(*event.key(), version, event.sequence_number()),
-                    &(idx as u64),
-                )
+                if let ContractEvent::V1(v1) = event {
+                    if !skip_index {
+                        batch.put::<EventByKeySchema>(
+                            &(*v1.key(), v1.sequence_number()),
+                            &(version, idx as u64),
+                        )?;
+                        batch.put::<EventByVersionSchema>(
+                            &(*v1.key(), version, v1.sequence_number()),
+                            &(idx as u64),
+                        )?;
+                    }
+                }
+                batch.put::<EventSchema>(&(version, idx as u64), event)
             })?;
 
-        // EventAccumulatorSchema updates
-        let event_hashes: Vec<HashValue> = events.iter().map(ContractEvent::hash).collect();
-        let (root_hash, writes) = MerkleAccumulator::<EmptyReader, EventAccumulatorHasher>::append(
-            &EmptyReader,
-            0,
-            &event_hashes,
-        )?;
-        writes.into_iter().try_for_each(|(pos, hash)| {
-            batch.put::<EventAccumulatorSchema>(&(version, pos), &hash)
-        })?;
+        if !skip_index {
+            // EventAccumulatorSchema updates
+            let event_hashes: Vec<HashValue> = events.iter().map(ContractEvent::hash).collect();
+            let (_root_hash, writes) =
+                MerkleAccumulator::<EmptyReader, EventAccumulatorHasher>::append(
+                    &EmptyReader,
+                    0,
+                    &event_hashes,
+                )?;
 
-        Ok(root_hash)
+            writes.into_iter().try_for_each(|(pos, hash)| {
+                batch.put::<EventAccumulatorSchema>(&(version, pos), &hash)
+            })?;
+        }
+
+        Ok(())
     }
 
     pub(crate) fn put_events_multiple_versions(
@@ -346,17 +355,13 @@ impl EventStore {
         first_version: u64,
         event_vecs: &[Vec<ContractEvent>],
         batch: &SchemaBatch,
-    ) -> Result<Vec<HashValue>> {
-        event_vecs
-            .iter()
-            .enumerate()
-            .map(|(idx, events)| {
-                let version = first_version
-                    .checked_add(idx as Version)
-                    .ok_or_else(|| format_err!("version overflow"))?;
-                self.put_events(version, events, batch)
-            })
-            .collect::<Result<Vec<_>>>()
+    ) -> Result<()> {
+        event_vecs.iter().enumerate().try_for_each(|(idx, events)| {
+            let version = first_version
+                .checked_add(idx as Version)
+                .ok_or_else(|| format_err!("version overflow"))?;
+            self.put_events(version, events, /*skip_index=*/ false, batch)
+        })
     }
 
     /// Finds the first event sequence number in a specified stream on which `comp` returns false.
@@ -379,7 +384,7 @@ impl EventStore {
         };
 
         // overflow not possible
-        #[allow(clippy::integer_arithmetic)]
+        #[allow(clippy::arithmetic_side_effects)]
         {
             let mut count = end - begin;
             while count > 0 {
@@ -466,14 +471,16 @@ impl EventStore {
     ) -> anyhow::Result<()> {
         let mut current_version = start;
         for events in self.get_events_by_version_iter(start, (end - start) as usize)? {
-            for (current_index, event) in (events?).into_iter().enumerate() {
-                db_batch.delete::<EventByVersionSchema>(&(
-                    *event.key(),
-                    current_version,
-                    event.sequence_number(),
-                ))?;
-                db_batch.delete::<EventByKeySchema>(&(*event.key(), event.sequence_number()))?;
-                db_batch.delete::<EventSchema>(&(current_version, current_index as u64))?;
+            for (idx, event) in (events?).into_iter().enumerate() {
+                if let ContractEvent::V1(v1) = event {
+                    db_batch.delete::<EventByVersionSchema>(&(
+                        *v1.key(),
+                        current_version,
+                        v1.sequence_number(),
+                    ))?;
+                    db_batch.delete::<EventByKeySchema>(&(*v1.key(), v1.sequence_number()))?;
+                }
+                db_batch.delete::<EventSchema>(&(current_version, idx as u64))?;
             }
             current_version += 1;
         }

@@ -51,7 +51,7 @@ use std::{boxed::Box, iter::once, net::SocketAddr, path::PathBuf, sync::Arc, tim
 use warp::{http::header::CONTENT_TYPE, Filter, Rejection, Reply};
 use warp_reverse_proxy::reverse_proxy_filter;
 
-const TRANSFER_AMOUNT: u64 = 10_000_000;
+const TRANSFER_AMOUNT: u64 = 200_000_000;
 
 #[derive(Clone, Debug)]
 pub enum ApiSpecificConfig {
@@ -93,6 +93,9 @@ pub fn new_test_context(
     node_config: NodeConfig,
     use_db_with_indexer: bool,
 ) -> TestContext {
+    // Speculative logging uses a global variable and when many instances use it together, they
+    // panic, so we disable this to run tests.
+    aptos_vm_logging::disable_speculative_logging();
     let tmp_dir = TempPath::new();
     tmp_dir.create_as_dir().unwrap();
 
@@ -325,7 +328,7 @@ impl TestContext {
     }
 
     pub async fn create_account(&mut self) -> LocalAccount {
-        let mut root = self.root_account().await;
+        let root = self.root_account().await;
         let account = self.gen_account();
         let factory = self.transaction_factory();
         let txn = root.sign_with_transaction_builder(
@@ -348,7 +351,7 @@ impl TestContext {
     }
 
     pub async fn mint_user_account(&self, account: &LocalAccount) -> SignedTransaction {
-        let mut tc = self.root_account().await;
+        let tc = self.root_account().await;
         let factory = self.transaction_factory();
         tc.sign_with_transaction_builder(
             factory
@@ -765,7 +768,7 @@ impl TestContext {
         let mut request = json!({
             "sender": account.address(),
             "sequence_number": account.sequence_number().to_string(),
-            "gas_unit_price": "0",
+            "gas_unit_price": "100",
             "max_gas_amount": "1000000",
             "expiration_timestamp_secs": "16373698888888",
             "payload": payload,
@@ -796,7 +799,7 @@ impl TestContext {
             .post("/transactions", request)
             .await;
         self.commit_mempool_txns(1).await;
-        *account.sequence_number_mut() += 1;
+        account.increment_sequence_number();
     }
 
     pub async fn simulate_multisig_transaction(

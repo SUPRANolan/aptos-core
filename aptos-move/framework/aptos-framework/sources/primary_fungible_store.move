@@ -12,7 +12,7 @@
 /// 4. The fungible asset metadata object calls `deposit` on the recipient's primary store to deposit `amount` of
 /// fungible asset to it. This emits an deposit event.
 module aptos_framework::primary_fungible_store {
-    use aptos_framework::fungible_asset::{Self, FungibleAsset, FungibleStore, Metadata};
+    use aptos_framework::fungible_asset::{Self, FungibleAsset, FungibleStore, Metadata, MintRef, TransferRef, BurnRef};
     use aptos_framework::object::{Self, Object, ConstructorRef, DeriveRef};
 
     use std::option::Option;
@@ -126,6 +126,8 @@ module aptos_framework::primary_fungible_store {
     /// Withdraw `amount` of fungible asset from the given account's primary store.
     public fun withdraw<T: key>(owner: &signer, metadata: Object<T>, amount: u64): FungibleAsset {
         let store = primary_store(signer::address_of(owner), metadata);
+        // Check if the store object has been burnt or not. If so, unburn it first.
+        may_be_unburn(owner, store);
         fungible_asset::withdraw(owner, store, amount)
     }
 
@@ -144,12 +146,65 @@ module aptos_framework::primary_fungible_store {
         amount: u64,
     ) acquires DeriveRefPod {
         let sender_store = ensure_primary_store_exists(signer::address_of(sender), metadata);
+        // Check if the sender store object has been burnt or not. If so, unburn it first.
+        may_be_unburn(sender, sender_store);
         let recipient_store = ensure_primary_store_exists(recipient, metadata);
         fungible_asset::transfer(sender, sender_store, recipient_store, amount);
     }
 
+    /// Mint to the primary store of `owner`.
+    public fun mint(mint_ref: &MintRef, owner: address, amount: u64) acquires DeriveRefPod {
+        let primary_store = ensure_primary_store_exists(owner, fungible_asset::mint_ref_metadata(mint_ref));
+        fungible_asset::mint_to(mint_ref, primary_store, amount);
+    }
+
+    /// Burn from the primary store of `owner`.
+    public fun burn(burn_ref: &BurnRef, owner: address, amount: u64) {
+        let primary_store = primary_store(owner, fungible_asset::burn_ref_metadata(burn_ref));
+        fungible_asset::burn_from(burn_ref, primary_store, amount);
+    }
+
+    /// Freeze/Unfreeze the primary store of `owner`.
+    public fun set_frozen_flag(transfer_ref: &TransferRef, owner: address, frozen: bool) acquires DeriveRefPod {
+        let primary_store = ensure_primary_store_exists(owner, fungible_asset::transfer_ref_metadata(transfer_ref));
+        fungible_asset::set_frozen_flag(transfer_ref, primary_store, frozen);
+    }
+
+    /// Withdraw from the primary store of `owner` ignoring frozen flag.
+    public fun withdraw_with_ref(transfer_ref: &TransferRef, owner: address, amount: u64): FungibleAsset {
+        let from_primary_store = primary_store(owner, fungible_asset::transfer_ref_metadata(transfer_ref));
+        fungible_asset::withdraw_with_ref(transfer_ref, from_primary_store, amount)
+    }
+
+    /// Deposit from the primary store of `owner` ignoring frozen flag.
+    public fun deposit_with_ref(transfer_ref: &TransferRef, owner: address, fa: FungibleAsset) acquires DeriveRefPod {
+        let from_primary_store = ensure_primary_store_exists(
+            owner,
+            fungible_asset::transfer_ref_metadata(transfer_ref)
+        );
+        fungible_asset::deposit_with_ref(transfer_ref, from_primary_store, fa);
+    }
+
+    /// Transfer `amount` of FA from the primary store of `from` to that of `to` ignoring frozen flag.
+    public fun transfer_with_ref(
+        transfer_ref: &TransferRef,
+        from: address,
+        to: address,
+        amount: u64
+    ) acquires DeriveRefPod {
+        let from_primary_store = primary_store(from, fungible_asset::transfer_ref_metadata(transfer_ref));
+        let to_primary_store = ensure_primary_store_exists(to, fungible_asset::transfer_ref_metadata(transfer_ref));
+        fungible_asset::transfer_with_ref(transfer_ref, from_primary_store, to_primary_store, amount);
+    }
+
+    fun may_be_unburn(owner: &signer, store: Object<FungibleStore>) {
+        if (object::is_burnt(store)) {
+            object::unburn(owner, store);
+        };
+    }
+
     #[test_only]
-    use aptos_framework::fungible_asset::{create_test_token, mint, generate_mint_ref, generate_burn_ref, MintRef, TransferRef, BurnRef, generate_transfer_ref};
+    use aptos_framework::fungible_asset::{create_test_token, generate_mint_ref, generate_burn_ref, generate_transfer_ref};
     #[test_only]
     use std::string;
     #[test_only]
@@ -198,17 +253,70 @@ module aptos_framework::primary_fungible_store {
         aaron: &signer,
     ) acquires DeriveRefPod {
         let (creator_ref, metadata) = create_test_token(creator);
-        let (mint_ref, _transfer_ref, _burn_ref) = init_test_metadata_with_primary_store_enabled(&creator_ref);
+        let (mint_ref, transfer_ref, burn_ref) = init_test_metadata_with_primary_store_enabled(&creator_ref);
         let creator_address = signer::address_of(creator);
         let aaron_address = signer::address_of(aaron);
         assert!(balance(creator_address, metadata) == 0, 1);
         assert!(balance(aaron_address, metadata) == 0, 2);
-        let fa = mint(&mint_ref, 100);
-        deposit(creator_address, fa);
+        mint(&mint_ref, creator_address, 100);
         transfer(creator, metadata, aaron_address, 80);
         let fa = withdraw(aaron, metadata, 10);
         deposit(creator_address, fa);
         assert!(balance(creator_address, metadata) == 30, 3);
         assert!(balance(aaron_address, metadata) == 70, 4);
+        set_frozen_flag(&transfer_ref, aaron_address, true);
+        assert!(is_frozen(aaron_address, metadata), 5);
+        let fa = withdraw_with_ref(&transfer_ref, aaron_address, 30);
+        deposit_with_ref(&transfer_ref, aaron_address, fa);
+        transfer_with_ref(&transfer_ref, aaron_address, creator_address, 20);
+        set_frozen_flag(&transfer_ref, aaron_address, false);
+        assert!(!is_frozen(aaron_address, metadata), 6);
+        burn(&burn_ref, aaron_address, 50);
+        assert!(balance(aaron_address, metadata) == 0, 7);
+    }
+
+    #[test(user_1 = @0xcafe, user_2 = @0xface)]
+    fun test_transfer_to_burnt_store(
+        user_1: &signer,
+        user_2: &signer,
+    ) acquires DeriveRefPod {
+        let (creator_ref, metadata) = create_test_token(user_1);
+        let (mint_ref, _, _) = init_test_metadata_with_primary_store_enabled(&creator_ref);
+        let user_1_address = signer::address_of(user_1);
+        let user_2_address = signer::address_of(user_2);
+        mint(&mint_ref, user_1_address, 100);
+        transfer(user_1, metadata, user_2_address, 80);
+
+        // User 2 burns their primary store but should still be able to transfer afterward.
+        let user_2_primary_store = primary_store(user_2_address, metadata);
+        object::burn(user_2, user_2_primary_store);
+        assert!(object::is_burnt(user_2_primary_store), 0);
+        // Balance still works
+        assert!(balance(user_2_address, metadata) == 80, 0);
+        // Deposit still works
+        transfer(user_1, metadata, user_2_address, 20);
+        transfer(user_2, metadata, user_1_address, 90);
+        assert!(balance(user_2_address, metadata) == 10, 0);
+    }
+
+    #[test(user_1 = @0xcafe, user_2 = @0xface)]
+    fun test_withdraw_from_burnt_store(
+        user_1: &signer,
+        user_2: &signer,
+    ) acquires DeriveRefPod {
+        let (creator_ref, metadata) = create_test_token(user_1);
+        let (mint_ref, _, _) = init_test_metadata_with_primary_store_enabled(&creator_ref);
+        let user_1_address = signer::address_of(user_1);
+        let user_2_address = signer::address_of(user_2);
+        mint(&mint_ref, user_1_address, 100);
+        transfer(user_1, metadata, user_2_address, 80);
+
+        // User 2 burns their primary store but should still be able to withdraw afterward.
+        let user_2_primary_store = primary_store(user_2_address, metadata);
+        object::burn(user_2, user_2_primary_store);
+        assert!(object::is_burnt(user_2_primary_store), 0);
+        let coins = withdraw(user_2, metadata, 70);
+        assert!(balance(user_2_address, metadata) == 10, 0);
+        deposit(user_2_address, coins);
     }
 }

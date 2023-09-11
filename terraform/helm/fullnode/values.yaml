@@ -32,7 +32,6 @@ fullnode:
     full_node_networks:
       # The first item in the array `full_node_networks` must always refer to the public fullnode network
       - network_id: "public"
-        seeds: {}
         identity: {}
         inbound_rate_limit_config:
         outbound_rate_limit_config:
@@ -143,6 +142,20 @@ backup_verify:
     requests:
       cpu: 4
       memory: 8Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+backup_compaction:
+  # -- The schedule for backup compaction
+  schedule: "@daily"
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 1
+      memory: 1Gi
   nodeSelector: {}
   tolerations: []
   affinity: {}

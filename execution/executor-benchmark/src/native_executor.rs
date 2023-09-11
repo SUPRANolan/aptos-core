@@ -9,11 +9,11 @@ use anyhow::Result;
 use aptos_executor::{
     block_executor::TransactionBlockExecutor, components::chunk_output::ChunkOutput,
 };
-use aptos_executor_types::ExecutableTransactions;
 use aptos_storage_interface::cached_state_view::CachedStateView;
 use aptos_types::{
     account_address::AccountAddress,
     account_config::{deposit::DepositEvent, withdraw::WithdrawEvent},
+    block_executor::partitioner::ExecutableTransactions,
     contract_event::ContractEvent,
     event::EventKey,
     state_store::state_key::StateKey,
@@ -130,7 +130,7 @@ impl NativeExecutor {
         ];
 
         // TODO(grao): Some values are fake, because I'm lazy.
-        let events = vec![ContractEvent::new(
+        let events = vec![ContractEvent::new_v1(
             EventKey::new(0, sender_address),
             0,
             TypeTag::Struct(Box::new(WithdrawEvent::struct_tag())),
@@ -224,7 +224,7 @@ impl NativeExecutor {
         }
 
         let events = vec![
-            ContractEvent::new(
+            ContractEvent::new_v1(
                 EventKey::new(0, recipient_address),
                 0,
                 TypeTag::Struct(Box::new(DepositEvent::struct_tag())),

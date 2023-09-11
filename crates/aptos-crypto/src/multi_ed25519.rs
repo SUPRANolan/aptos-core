@@ -284,7 +284,7 @@ impl PublicKey for MultiEd25519PublicKey {
     type PrivateKeyMaterial = MultiEd25519PrivateKey;
 }
 
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for MultiEd25519PublicKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let encoded_pubkey = self.to_bytes();
@@ -457,7 +457,7 @@ impl Length for MultiEd25519Signature {
     }
 }
 
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for MultiEd25519Signature {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let encoded_signature = self.to_bytes();
@@ -558,7 +558,8 @@ impl From<Ed25519Signature> for MultiEd25519Signature {
 // Helper functions //
 //////////////////////
 
-// Helper function required to MultiEd25519 keys to_bytes to add the threshold.
+/// Helper function used to convert a slice of MultiEd25519 keys to a sequence of bytes by
+/// concatenating the serialized `keys` and the `threshold`.
 fn to_bytes<T: ValidCryptoMaterial>(keys: &[T], threshold: u8) -> Vec<u8> {
     let mut bytes: Vec<u8> = keys
         .iter()

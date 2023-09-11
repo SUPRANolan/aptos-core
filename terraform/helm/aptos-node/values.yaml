@@ -17,7 +17,7 @@ numFullnodeGroups: 1
 # -- Options for multicluster mode. This is *experimental only*.
 multicluster:
   enabled: false
-  targetClusters: ["cluster1", "cluster2", "cluster3"]
+  targetClusters: ["forge-multiregion-1", "forge-multiregion-2", "forge-multiregion-3"]
 
 # -- Specify validator and fullnode NodeConfigs via named ConfigMaps, rather than the generated ones from this chart.
 overrideNodeConfig: false
@@ -131,7 +131,6 @@ fullnode:
     full_node_networks:
       # The first item in the array `full_node_networks` must always refer to the public fullnode network
       - network_id: "public"
-        seeds: {}
 
 service:
   # -- If set, the base domain name to use for External DNS

@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 mod account_generator;
+pub mod block_partitioning;
 pub mod db_access;
 pub mod db_generator;
 mod db_reliable_submitter;
+mod ledger_update_stage;
 mod metrics;
 pub mod native_executor;
 pub mod pipeline;
@@ -14,27 +16,32 @@ pub mod transaction_executor;
 pub mod transaction_generator;
 
 use crate::{
-    pipeline::Pipeline, transaction_committer::TransactionCommitter,
+    db_access::DbAccessUtil, pipeline::Pipeline, transaction_committer::TransactionCommitter,
     transaction_executor::TransactionExecutor, transaction_generator::TransactionGenerator,
 };
+use aptos_block_executor::counters as block_executor_counters;
+use aptos_block_partitioner::v2::counters::BLOCK_PARTITIONING_SECONDS;
 use aptos_config::config::{NodeConfig, PrunerConfig};
 use aptos_db::AptosDB;
 use aptos_executor::{
     block_executor::{BlockExecutor, TransactionBlockExecutor},
     metrics::{
         APTOS_EXECUTOR_COMMIT_BLOCKS_SECONDS, APTOS_EXECUTOR_EXECUTE_BLOCK_SECONDS,
-        APTOS_EXECUTOR_OTHER_TIMERS_SECONDS, APTOS_EXECUTOR_VM_EXECUTE_BLOCK_SECONDS,
+        APTOS_EXECUTOR_LEDGER_UPDATE_SECONDS, APTOS_EXECUTOR_OTHER_TIMERS_SECONDS,
+        APTOS_EXECUTOR_VM_EXECUTE_BLOCK_SECONDS,
     },
 };
 use aptos_jellyfish_merkle::metrics::{
     APTOS_JELLYFISH_INTERNAL_ENCODED_BYTES, APTOS_JELLYFISH_LEAF_ENCODED_BYTES,
 };
-use aptos_logger::info;
-use aptos_storage_interface::DbReaderWriter;
+use aptos_logger::{info, warn};
+use aptos_metrics_core::Histogram;
+use aptos_sdk::types::LocalAccount;
+use aptos_storage_interface::{state_view::LatestDbStateCheckpointView, DbReader, DbReaderWriter};
 use aptos_transaction_generator_lib::{
     create_txn_generator_creator, TransactionGeneratorCreator, TransactionType,
+    TransactionType::NonConflictingCoinTransfer,
 };
-use aptos_vm::counters::TXN_GAS_USAGE;
 use db_reliable_submitter::DbReliableTransactionSubmitter;
 use pipeline::PipelineConfig;
 use std::{
@@ -71,6 +78,7 @@ where
 fn create_checkpoint(
     source_dir: impl AsRef<Path>,
     checkpoint_dir: impl AsRef<Path>,
+    split_ledger_db: bool,
     use_sharded_state_merkle_db: bool,
 ) {
     // Create rocksdb checkpoint.
@@ -79,24 +87,34 @@ fn create_checkpoint(
     }
     std::fs::create_dir_all(checkpoint_dir.as_ref()).unwrap();
 
-    AptosDB::create_checkpoint(source_dir, checkpoint_dir, use_sharded_state_merkle_db)
-        .expect("db checkpoint creation fails.");
+    AptosDB::create_checkpoint(
+        source_dir,
+        checkpoint_dir,
+        split_ledger_db,
+        use_sharded_state_merkle_db,
+    )
+    .expect("db checkpoint creation fails.");
 }
 
 /// Runs the benchmark with given parameters.
+#[allow(clippy::too_many_arguments)]
 pub fn run_benchmark<V>(
     block_size: usize,
     num_blocks: usize,
-    transaction_type: Option<TransactionType>,
-    transactions_per_sender: usize,
+    transaction_mix: Option<Vec<(TransactionType, usize)>>,
+    mut transactions_per_sender: usize,
+    connected_tx_grps: usize,
+    shuffle_connected_txns: bool,
+    hotspot_probability: Option<f32>,
     num_main_signer_accounts: usize,
     num_additional_dst_pool_accounts: usize,
     source_dir: impl AsRef<Path>,
     checkpoint_dir: impl AsRef<Path>,
     verify_sequence_numbers: bool,
     pruner_config: PrunerConfig,
-    use_state_kv_db: bool,
+    split_ledger_db: bool,
     use_sharded_state_merkle_db: bool,
+    skip_index_and_usage: bool,
     pipeline_config: PipelineConfig,
 ) where
     V: TransactionBlockExecutor + 'static,
@@ -104,67 +122,100 @@ pub fn run_benchmark<V>(
     create_checkpoint(
         source_dir.as_ref(),
         checkpoint_dir.as_ref(),
+        split_ledger_db,
         use_sharded_state_merkle_db,
     );
 
     let (mut config, genesis_key) = aptos_genesis::test_utils::test_config();
     config.storage.dir = checkpoint_dir.as_ref().to_path_buf();
     config.storage.storage_pruner_config = pruner_config;
-    config.storage.rocksdb_configs.use_state_kv_db = use_state_kv_db;
+    config.storage.rocksdb_configs.split_ledger_db = split_ledger_db;
     config.storage.rocksdb_configs.use_sharded_state_merkle_db = use_sharded_state_merkle_db;
+    config.storage.rocksdb_configs.skip_index_and_usage = skip_index_and_usage;
 
     let (db, executor) = init_db_and_executor::<V>(&config);
+    let transaction_generator_creator = transaction_mix.clone().map(|transaction_mix| {
+        let num_existing_accounts = TransactionGenerator::read_meta(&source_dir);
+        let num_accounts_to_be_loaded = std::cmp::min(
+            num_existing_accounts,
+            num_main_signer_accounts + num_additional_dst_pool_accounts,
+        );
 
-    let transaction_generator_creator = transaction_type.map(|transaction_type| {
-        init_workload::<V, _>(
-            transaction_type,
-            num_main_signer_accounts,
-            num_additional_dst_pool_accounts,
+        let mut num_accounts_to_skip = 0;
+        for (transaction_type, _) in &transaction_mix {
+            if let NonConflictingCoinTransfer{..} = transaction_type {
+                // In case of random non-conflicting coin transfer using `P2PTransactionGenerator`,
+                // `3*block_size` addresses is required:
+                // `block_size` number of signers, and 2 groups of burn-n-recycle recipients used alternatively.
+                if num_accounts_to_be_loaded < block_size * 3 {
+                    panic!("Cannot guarantee random non-conflicting coin transfer using `P2PTransactionGenerator`.");
+                }
+                num_accounts_to_skip = block_size;
+            }
+        }
+
+        let accounts_cache =
+            TransactionGenerator::gen_user_account_cache(db.reader.clone(), num_accounts_to_be_loaded, num_accounts_to_skip);
+        let (main_signer_accounts, burner_accounts) =
+            accounts_cache.split(num_main_signer_accounts);
+
+        init_workload::<V>(
+            transaction_mix,
+            main_signer_accounts,
+            burner_accounts,
             db.clone(),
-            &source_dir,
             // Initialization pipeline is temporary, so needs to be fully committed.
             // No discards/aborts allowed during initialization, even if they are allowed later.
-            PipelineConfig {
-                delay_execution_start: false,
-                split_stages: false,
-                skip_commit: false,
-                allow_discards: false,
-                allow_aborts: false,
-            },
+            &PipelineConfig::default(),
         )
     });
 
     let version = db.reader.get_latest_version().unwrap();
 
     let (pipeline, block_sender) =
-        Pipeline::new(executor, version, pipeline_config.clone(), Some(num_blocks));
+        Pipeline::new(executor, version, &pipeline_config, Some(num_blocks));
+
+    let mut num_accounts_to_load = num_main_signer_accounts;
+    if let Some(mix) = &transaction_mix {
+        for (transaction_type, _) in mix {
+            if let NonConflictingCoinTransfer { .. } = transaction_type {
+                // In case of non-conflicting coin transfer,
+                // `aptos_executor_benchmark::transaction_generator::TransactionGenerator` needs to hold
+                // at least `block_size` number of accounts, all as signer only.
+                num_accounts_to_load = block_size;
+                if transactions_per_sender > 1 {
+                    warn!(
+                    "Overriding transactions_per_sender to 1 for non_conflicting_txns_per_block workload"
+                );
+                    transactions_per_sender = 1;
+                }
+            }
+        }
+    }
     let mut generator = TransactionGenerator::new_with_existing_db(
         db.clone(),
         genesis_key,
         block_sender,
         source_dir,
-        version,
-        Some(num_main_signer_accounts),
+        Some(num_accounts_to_load),
+        pipeline_config.num_generator_workers,
     );
 
     let mut start_time = Instant::now();
-    let start_gas = TXN_GAS_USAGE.get_sample_sum();
+    let start_gas_measurement = GasMesurement::start();
 
+    let start_partitioning_total = BLOCK_PARTITIONING_SECONDS.get_sample_sum();
     let start_execution_total = APTOS_EXECUTOR_EXECUTE_BLOCK_SECONDS.get_sample_sum();
     let start_vm_only = APTOS_EXECUTOR_VM_EXECUTE_BLOCK_SECONDS.get_sample_sum();
     let other_labels = vec![
         ("1.", true, "verified_state_view"),
-        ("2.", true, "apply_to_ledger"),
+        ("2.", true, "state_checkpoint"),
         ("2.1.", false, "sort_transactions"),
         ("2.2.", false, "calculate_for_transaction_block"),
         ("2.2.1.", false, "get_sharded_state_updates"),
         ("2.2.2.", false, "calculate_block_state_updates"),
         ("2.2.3.", false, "calculate_usage"),
         ("2.2.4.", false, "make_checkpoint"),
-        ("2.3.", false, "assemble_ledger_diff_for_block"),
-        ("2.3.1.", false, "calculate_events_and_writeset_hashes"),
-        ("3.", true, "as_state_compute_result"),
-        ("4.", true, "get_txns_to_commit"),
     ];
 
     let start_by_other = other_labels
@@ -178,8 +229,10 @@ pub fn run_benchmark<V>(
             )
         })
         .collect::<HashMap<_, _>>();
+    let start_ledger_update_total = APTOS_EXECUTOR_LEDGER_UPDATE_SECONDS.get_sample_sum();
     let start_commit_total = APTOS_EXECUTOR_COMMIT_BLOCKS_SECONDS.get_sample_sum();
 
+    let start_vm_time = APTOS_EXECUTOR_VM_EXECUTE_BLOCK_SECONDS.get_sample_sum();
     if let Some(transaction_generator_creator) = transaction_generator_creator {
         generator.run_workload(
             block_size,
@@ -188,7 +241,14 @@ pub fn run_benchmark<V>(
             transactions_per_sender,
         );
     } else {
-        generator.run_transfer(block_size, num_blocks, transactions_per_sender);
+        generator.run_transfer(
+            block_size,
+            num_blocks,
+            transactions_per_sender,
+            connected_tx_grps,
+            shuffle_connected_txns,
+            hotspot_probability,
+        );
     }
     if pipeline_config.delay_execution_start {
         start_time = Instant::now();
@@ -199,17 +259,36 @@ pub fn run_benchmark<V>(
 
     let elapsed = start_time.elapsed().as_secs_f64();
     let delta_v = (db.reader.get_latest_version().unwrap() - version) as f64;
-    let delta_gas = TXN_GAS_USAGE.get_sample_sum() - start_gas;
+    let (delta_gas, delta_gas_count) = start_gas_measurement.end();
+
+    let delta_vm_time = APTOS_EXECUTOR_VM_EXECUTE_BLOCK_SECONDS.get_sample_sum() - start_vm_time;
+    info!(
+        "VM execution TPS {} txn/s",
+        (delta_v / delta_vm_time) as usize
+    );
     info!(
         "Executed workload {}",
-        if let Some(ttype) = transaction_type {
-            format!("{:?} via txn generator", ttype)
+        if let Some(mix) = transaction_mix {
+            format!("{:?} via txn generator", mix)
         } else {
             "raw transfer".to_string()
         }
     );
     info!("Overall TPS: {} txn/s", delta_v / elapsed);
     info!("Overall GPS: {} gas/s", delta_gas / elapsed);
+    info!(
+        "Overall GPT: {} gas/txn",
+        delta_gas / (delta_gas_count as f64).max(1.0)
+    );
+
+    let time_in_partitioning =
+        BLOCK_PARTITIONING_SECONDS.get_sample_sum() - start_partitioning_total;
+
+    info!(
+        "Overall fraction of total: {:.3} in partitioning (component TPS: {})",
+        time_in_partitioning / elapsed,
+        delta_v / time_in_partitioning
+    );
 
     let time_in_execution =
         APTOS_EXECUTOR_EXECUTE_BLOCK_SECONDS.get_sample_sum() - start_execution_total;
@@ -239,25 +318,34 @@ pub fn run_benchmark<V>(
             );
         }
     }
+
+    let time_in_ledger_update =
+        APTOS_EXECUTOR_LEDGER_UPDATE_SECONDS.get_sample_sum() - start_ledger_update_total;
+    info!(
+        "Overall fraction of total: {:.3} in ledger update (component TPS: {})",
+        time_in_ledger_update / elapsed,
+        delta_v / time_in_ledger_update
+    );
+
     let time_in_commit = APTOS_EXECUTOR_COMMIT_BLOCKS_SECONDS.get_sample_sum() - start_commit_total;
     info!(
-        "Overall fraction of total: {:.3} in commit (component TPS: {})",
+        "Overall fraction of total: {:.4} in commit (component TPS: {})",
         time_in_commit / elapsed,
         delta_v / time_in_commit
     );
 
     if verify_sequence_numbers {
-        generator.verify_sequence_numbers(db.reader);
+        generator.verify_sequence_numbers(db.reader.clone());
     }
+    log_total_supply(&db.reader);
 }
 
-fn init_workload<V, P: AsRef<Path>>(
-    transaction_type: TransactionType,
-    num_main_signer_accounts: usize,
-    num_additional_dst_pool_accounts: usize,
+fn init_workload<V>(
+    transaction_mix: Vec<(TransactionType, usize)>,
+    mut main_signer_accounts: Vec<LocalAccount>,
+    burner_accounts: Vec<LocalAccount>,
     db: DbReaderWriter,
-    db_dir: &P,
-    pipeline_config: PipelineConfig,
+    pipeline_config: &PipelineConfig,
 ) -> Box<dyn TransactionGeneratorCreator>
 where
     V: TransactionBlockExecutor + 'static,
@@ -271,17 +359,6 @@ where
     );
 
     let runtime = Runtime::new().unwrap();
-
-    let num_existing_accounts = TransactionGenerator::read_meta(db_dir);
-    let num_cached_accounts = std::cmp::min(
-        num_existing_accounts,
-        num_main_signer_accounts + num_additional_dst_pool_accounts,
-    );
-    let accounts_cache =
-        TransactionGenerator::gen_user_account_cache(db.reader.clone(), num_cached_accounts);
-
-    let (mut main_signer_accounts, burner_accounts) =
-        accounts_cache.split(num_main_signer_accounts);
     let transaction_factory = TransactionGenerator::create_transaction_factory();
 
     let (txn_generator_creator, _address_pool, _account_pool) = runtime.block_on(async {
@@ -293,7 +370,7 @@ where
         };
 
         create_txn_generator_creator(
-            &[vec![(transaction_type, 1)]],
+            &[transaction_mix],
             &mut main_signer_accounts,
             burner_accounts,
             &db_gen_init_transaction_executor,
@@ -317,8 +394,9 @@ pub fn add_accounts<V>(
     checkpoint_dir: impl AsRef<Path>,
     pruner_config: PrunerConfig,
     verify_sequence_numbers: bool,
-    use_state_kv_db: bool,
+    split_ledger_db: bool,
     use_sharded_state_merkle_db: bool,
+    skip_index_and_usage: bool,
     pipeline_config: PipelineConfig,
 ) where
     V: TransactionBlockExecutor + 'static,
@@ -327,6 +405,7 @@ pub fn add_accounts<V>(
     create_checkpoint(
         source_dir.as_ref(),
         checkpoint_dir.as_ref(),
+        split_ledger_db,
         use_sharded_state_merkle_db,
     );
     add_accounts_impl::<V>(
@@ -337,8 +416,9 @@ pub fn add_accounts<V>(
         checkpoint_dir,
         pruner_config,
         verify_sequence_numbers,
-        use_state_kv_db,
+        split_ledger_db,
         use_sharded_state_merkle_db,
+        skip_index_and_usage,
         pipeline_config,
     );
 }
@@ -351,8 +431,9 @@ fn add_accounts_impl<V>(
     output_dir: impl AsRef<Path>,
     pruner_config: PrunerConfig,
     verify_sequence_numbers: bool,
-    use_state_kv_db: bool,
+    split_ledger_db: bool,
     use_sharded_state_merkle_db: bool,
+    skip_index_and_usage: bool,
     pipeline_config: PipelineConfig,
 ) where
     V: TransactionBlockExecutor + 'static,
@@ -360,16 +441,17 @@ fn add_accounts_impl<V>(
     let (mut config, genesis_key) = aptos_genesis::test_utils::test_config();
     config.storage.dir = output_dir.as_ref().to_path_buf();
     config.storage.storage_pruner_config = pruner_config;
-    config.storage.rocksdb_configs.use_state_kv_db = use_state_kv_db;
+    config.storage.rocksdb_configs.split_ledger_db = split_ledger_db;
     config.storage.rocksdb_configs.use_sharded_state_merkle_db = use_sharded_state_merkle_db;
+    config.storage.rocksdb_configs.skip_index_and_usage = skip_index_and_usage;
     let (db, executor) = init_db_and_executor::<V>(&config);
 
-    let version = db.reader.get_latest_version().unwrap();
+    let start_version = db.reader.get_latest_version().unwrap();
 
     let (pipeline, block_sender) = Pipeline::new(
         executor,
-        version,
-        pipeline_config,
+        start_version,
+        &pipeline_config,
         Some(1 + num_new_accounts / block_size * 101 / 100),
     );
 
@@ -378,8 +460,8 @@ fn add_accounts_impl<V>(
         genesis_key,
         block_sender,
         &source_dir,
-        version,
         None,
+        pipeline_config.num_generator_workers,
     );
 
     let start_time = Instant::now();
@@ -395,7 +477,8 @@ fn add_accounts_impl<V>(
     pipeline.join();
 
     let elapsed = start_time.elapsed().as_secs_f32();
-    let delta_v = db.reader.get_latest_version().unwrap() - version;
+    let now_version = db.reader.get_latest_version().unwrap();
+    let delta_v = now_version - start_version;
     info!(
         "Overall TPS: account creation: {} txn/s",
         delta_v as f32 / elapsed,
@@ -404,15 +487,17 @@ fn add_accounts_impl<V>(
     if verify_sequence_numbers {
         println!("Verifying sequence numbers...");
         // Do a sanity check on the sequence number to make sure all transactions are committed.
-        generator.verify_sequence_numbers(db.reader);
+        generator.verify_sequence_numbers(db.reader.clone());
     }
 
     println!(
         "Created {} new accounts. Now at version {}, total # of accounts {}.",
         num_new_accounts,
-        generator.version(),
+        now_version,
         generator.num_existing_accounts() + num_new_accounts,
     );
+
+    log_total_supply(&db.reader);
 
     // Write metadata
     generator.write_meta(&output_dir, num_new_accounts);
@@ -425,6 +510,49 @@ fn add_accounts_impl<V>(
         "Total written leaf nodes value size: {} bytes",
         APTOS_JELLYFISH_LEAF_ENCODED_BYTES.get()
     );
+}
+
+struct GasMesurement {
+    start_gas: f64,
+    start_gas_count: u64,
+}
+
+impl GasMesurement {
+    pub fn sequential_gas_counter() -> Histogram {
+        block_executor_counters::TXN_GAS.with_label_values(&[
+            block_executor_counters::Mode::SEQUENTIAL,
+            block_executor_counters::GasType::NON_STORAGE_GAS,
+        ])
+    }
+
+    pub fn parallel_gas_counter() -> Histogram {
+        block_executor_counters::TXN_GAS.with_label_values(&[
+            block_executor_counters::Mode::PARALLEL,
+            block_executor_counters::GasType::NON_STORAGE_GAS,
+        ])
+    }
+
+    pub fn start() -> Self {
+        let start_gas = Self::sequential_gas_counter().get_sample_sum()
+            + Self::parallel_gas_counter().get_sample_sum();
+        let start_gas_count = Self::sequential_gas_counter().get_sample_count()
+            + Self::parallel_gas_counter().get_sample_count();
+
+        Self {
+            start_gas,
+            start_gas_count,
+        }
+    }
+
+    pub fn end(self) -> (f64, u64) {
+        let delta_gas = (Self::sequential_gas_counter().get_sample_sum()
+            + Self::parallel_gas_counter().get_sample_sum())
+            - self.start_gas;
+        let delta_gas_count = (Self::sequential_gas_counter().get_sample_count()
+            + Self::parallel_gas_counter().get_sample_count())
+            - self.start_gas_count;
+        (delta_gas, delta_gas_count)
+    }
 }
 
 #[cfg(test)]
@@ -459,13 +587,8 @@ mod tests {
             verify_sequence_numbers,
             false,
             false,
-            PipelineConfig {
-                delay_execution_start: false,
-                split_stages: false,
-                skip_commit: false,
-                allow_discards: false,
-                allow_aborts: false,
-            },
+            false,
+            PipelineConfig::default(),
         );
 
         println!("run_benchmark");
@@ -473,23 +596,21 @@ mod tests {
         super::run_benchmark::<E>(
             6, /* block_size */
             5, /* num_blocks */
-            transaction_type.map(|t| t.materialize(2, false)),
-            2,  /* transactions per sender */
-            25, /* num_main_signer_accounts */
-            30, /* num_dst_pool_accounts */
+            transaction_type.map(|t| vec![(t.materialize(2, false), 1)]),
+            2,     /* transactions per sender */
+            0,     /* connected txn groups in a block */
+            false, /* shuffle the connected txns in a block */
+            None,  /* maybe_hotspot_probability */
+            25,    /* num_main_signer_accounts */
+            30,    /* num_dst_pool_accounts */
             storage_dir.as_ref(),
             checkpoint_dir,
             verify_sequence_numbers,
             NO_OP_STORAGE_PRUNER_CONFIG,
             false,
             false,
-            PipelineConfig {
-                delay_execution_start: false,
-                split_stages: true,
-                skip_commit: false,
-                allow_discards: false,
-                allow_aborts: false,
-            },
+            false,
+            PipelineConfig::default(),
         );
     }
 
@@ -508,4 +629,10 @@ mod tests {
         // correct execution not yet implemented, so cannot be checked for validity
         test_generic_benchmark::<NativeExecutor>(None, false);
     }
+}
+
+fn log_total_supply(db_reader: &Arc<dyn DbReader>) {
+    let total_supply =
+        DbAccessUtil::get_total_supply(&db_reader.latest_state_checkpoint_view().unwrap()).unwrap();
+    info!("total supply is {:?} octas", total_supply)
 }

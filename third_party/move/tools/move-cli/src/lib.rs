@@ -4,8 +4,7 @@
 
 use base::{
     build::Build, coverage::Coverage, disassemble::Disassemble, docgen::Docgen, errmap::Errmap,
-    info::Info, movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove,
-    test::Test,
+    movey_login::MoveyLogin, movey_upload::MoveyUpload, new::New, prove::Prove, test::Test,
 };
 use move_package::BuildConfig;
 
@@ -37,7 +36,7 @@ type NativeFunctionRecord = (AccountAddress, Identifier, Identifier, NativeFunct
 #[clap(author, version, about)]
 pub struct Move {
     /// Path to a package which the command should be run with respect to.
-    #[clap(long = "path", short = 'p', global = true, parse(from_os_str))]
+    #[clap(long = "path", short = 'p', global = true, value_parser)]
     pub package_path: Option<PathBuf>,
 
     /// Print additional diagnostics if available.
@@ -68,7 +67,6 @@ pub enum Command {
     Disassemble(Disassemble),
     Docgen(Docgen),
     Errmap(Errmap),
-    Info(Info),
     MoveyUpload(MoveyUpload),
     New(New),
     Prove(Prove),
@@ -78,7 +76,7 @@ pub enum Command {
     Sandbox {
         /// Directory storing Move resources, events, and module bytecodes produced by module publishing
         /// and script execution.
-        #[clap(long, default_value = DEFAULT_STORAGE_DIR, parse(from_os_str))]
+        #[clap(long, default_value = DEFAULT_STORAGE_DIR, value_parser)]
         storage_dir: PathBuf,
         #[clap(subcommand)]
         cmd: sandbox::cli::SandboxCommand,
@@ -103,7 +101,6 @@ pub fn run_cli(
         Command::Disassemble(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Docgen(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::Errmap(c) => c.execute(move_args.package_path, move_args.build_config),
-        Command::Info(c) => c.execute(move_args.package_path, move_args.build_config),
         Command::MoveyUpload(c) => c.execute(move_args.package_path),
         Command::New(c) => c.execute_with_defaults(move_args.package_path),
         Command::Prove(c) => c.execute(move_args.package_path, move_args.build_config),
@@ -137,4 +134,10 @@ pub fn move_cli(
         args.move_args,
         args.cmd,
     )
+}
+
+#[test]
+fn verify_tool() {
+    use clap::CommandFactory;
+    MoveCLI::command().debug_assert()
 }

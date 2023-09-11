@@ -14,7 +14,7 @@ use warp::{http::Response, Filter};
 /// the specific service.
 #[derive(Parser)]
 pub struct ServerArgs {
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long, value_parser)]
     pub config_path: PathBuf,
 }
 
@@ -43,13 +43,22 @@ where
         Ok(())
     });
     let main_task_handler = runtime.spawn(async move { config.run().await });
-    let results = futures::future::join_all(vec![task_handler, main_task_handler]).await;
-    let errors = results.iter().filter(|r| r.is_err()).collect::<Vec<_>>();
-    if !errors.is_empty() {
-        return Err(anyhow::anyhow!("Failed to run server: {:?}", errors));
+    tokio::select! {
+        res = task_handler => {
+            if let Err(e) = res {
+                error!("Probes and metrics handler panicked or was shutdown: {:?}", e);
+                process::exit(1);
+            }
+            Ok(())
+        },
+        res = main_task_handler => {
+            if let Err(e) = res {
+                error!("Main task panicked or was shutdown: {:?}", e);
+                process::exit(1);
+            }
+            Ok(())
+        },
     }
-    // TODO(larry): fix the dropped runtime issue.
-    Ok(())
 }
 
 #[derive(Deserialize, Debug, Serialize)]
@@ -208,5 +217,11 @@ mod tests {
         assert_eq!(config.health_check_port, 12345);
         assert_eq!(config.server_config.test, 123);
         assert_eq!(config.server_config.test_name, "test");
+    }
+
+    #[test]
+    fn verify_tool() {
+        use clap::CommandFactory;
+        ServerArgs::command().debug_assert()
     }
 }

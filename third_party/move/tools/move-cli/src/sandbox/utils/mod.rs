@@ -21,7 +21,7 @@ use move_compiler::{
 };
 use move_core_types::{
     account_address::AccountAddress,
-    effects::{ChangeSet, Event, Op},
+    effects::{ChangeSet, Op},
     errmap::ErrorMapping,
     language_storage::{ModuleId, TypeTag},
     transaction_argument::TransactionArgument,
@@ -42,7 +42,7 @@ pub mod package_context;
 
 use move_bytecode_utils::module_cache::GetModule;
 use move_vm_test_utils::gas_schedule::{CostTable, GasStatus};
-pub use on_disk_state_view::*;
+// pub use on_disk_state_view::*;
 pub use package_context::*;
 
 pub fn get_gas_status(cost_table: &CostTable, gas_budget: Option<u64>) -> Result<GasStatus> {
@@ -151,21 +151,10 @@ fn print_struct_diff_with_indent(
 
 pub(crate) fn explain_execution_effects(
     changeset: &ChangeSet,
-    events: &[Event],
     state: &OnDiskStateView,
 ) -> Result<()> {
     // execution effects should contain no modules
     assert!(changeset.modules().next().is_none());
-    if !events.is_empty() {
-        println!("Emitted {:?} events:", events.len());
-        // TODO: better event printing
-        for (event_key, event_sequence_number, _event_type, event_data) in events {
-            println!(
-                "Emitted {:?} as the {}th event to stream {:?}",
-                event_data, event_sequence_number, event_key
-            )
-        }
-    }
     if !changeset.accounts().is_empty() {
         println!(
             "Changed resource(s) under {:?} address(es):",
@@ -243,11 +232,10 @@ pub(crate) fn explain_execution_effects(
     Ok(())
 }
 
-/// Commit the resources and events modified by a transaction to disk
+/// Commit the resources modified by a transaction to disk
 pub(crate) fn maybe_commit_effects(
     commit: bool,
     changeset: ChangeSet,
-    events: Vec<Event>,
     state: &OnDiskStateView,
 ) -> Result<()> {
     // similar to explain effects, all module publishing happens via save_modules(), so effects
@@ -263,11 +251,7 @@ pub(crate) fn maybe_commit_effects(
                 }
             }
         }
-
-        for (event_key, event_sequence_number, event_type, event_data) in events {
-            state.save_event(&event_key, event_sequence_number, event_type, event_data)?
-        }
-    } else if !(changeset.resources().next().is_none() && events.is_empty()) {
+    } else if changeset.resources().next().is_some() {
         println!("Discarding changes; re-run without --dry-run if you would like to keep them.")
     }
 
@@ -335,13 +319,19 @@ pub(crate) fn explain_publish_error(
     let module_id = module.self_id();
     let error_clone = error.clone();
     match error.into_vm_status() {
-        VMStatus::Error(DUPLICATE_MODULE_NAME, _) => {
+        VMStatus::Error {
+            status_code: DUPLICATE_MODULE_NAME,
+            ..
+        } => {
             println!(
                 "Module {} exists already. Re-run without --no-republish to publish anyway.",
                 module_id
             );
         },
-        VMStatus::Error(BACKWARD_INCOMPATIBLE_MODULE_UPDATE, _) => {
+        VMStatus::Error {
+            status_code: BACKWARD_INCOMPATIBLE_MODULE_UPDATE,
+            ..
+        } => {
             println!("Breaking change detected--publishing aborted. Re-run with --ignore-breaking-changes to publish anyway.");
 
             let old_module = state.get_module_by_id(&module_id)?.unwrap();
@@ -364,7 +354,10 @@ pub(crate) fn explain_publish_error(
                 println!("Linking API for structs/functions of module {} has changed. Need to redeploy all dependent modules.", module_id)
             }
         },
-        VMStatus::Error(CYCLIC_MODULE_DEPENDENCY, _) => {
+        VMStatus::Error {
+            status_code: CYCLIC_MODULE_DEPENDENCY,
+            ..
+        } => {
             println!(
                 "Publishing module {} introduces cyclic dependencies.",
                 module_id
@@ -380,8 +373,7 @@ pub(crate) fn explain_publish_error(
                 stack.push((code_cache.get_module(&dep)?, false));
             }
 
-            while !stack.is_empty() {
-                let (cur, is_exit) = stack.pop().unwrap();
+            while let Some((cur, is_exit)) = stack.pop() {
                 let cur_id = cur.self_id();
                 if is_exit {
                     state.insert(cur_id, false);
@@ -411,7 +403,10 @@ pub(crate) fn explain_publish_error(
             }
             println!("Re-run with --ignore-breaking-changes to publish anyway.")
         },
-        VMStatus::Error(MISSING_DEPENDENCY, _) => {
+        VMStatus::Error {
+            status_code: MISSING_DEPENDENCY,
+            ..
+        } => {
             let err_indices = error_clone.indices();
             let mut diags = Diagnostics::new();
             for (ind_kind, table_ind) in err_indices {
@@ -441,7 +436,7 @@ pub(crate) fn explain_publish_error(
             }
             report_diagnostics(&files, diags)
         },
-        VMStatus::Error(status_code, _) => {
+        VMStatus::Error { status_code, .. } => {
             println!("Publishing failed with unexpected error {:?}", status_code)
         },
         VMStatus::Executed | VMStatus::MoveAbort(..) | VMStatus::ExecutionFailure { .. } => {
@@ -535,16 +530,23 @@ pub(crate) fn explain_execution_error(
                 status_explanation, location_explanation, code_offset
             )
         },
-        VMStatus::Error(NUMBER_OF_TYPE_ARGUMENTS_MISMATCH, _) => println!(
+        VMStatus::Error {
+            status_code: NUMBER_OF_TYPE_ARGUMENTS_MISMATCH,
+            ..
+        } => println!(
             "Execution failed with incorrect number of type arguments: script expected {:?}, but \
              found {:?}",
             script_type_parameters.len(),
             vm_type_args.len()
         ),
-        VMStatus::Error(TYPE_MISMATCH, _) => {
-            explain_type_error(script_parameters, signers, txn_args)
-        },
-        VMStatus::Error(LINKER_ERROR, _) => {
+        VMStatus::Error {
+            status_code: TYPE_MISMATCH,
+            ..
+        } => explain_type_error(script_parameters, signers, txn_args),
+        VMStatus::Error {
+            status_code: LINKER_ERROR,
+            ..
+        } => {
             // TODO: is this the only reason we can see LINKER_ERROR?
             // Can we also see it if someone manually deletes modules in storage?
             println!(
@@ -553,7 +555,7 @@ pub(crate) fn explain_execution_error(
                  0x1::M)"
             );
         },
-        VMStatus::Error(status_code, _) => {
+        VMStatus::Error { status_code, .. } => {
             println!("Execution failed with unexpected error {:?}", status_code)
         },
         VMStatus::Executed => unreachable!(),

@@ -2,19 +2,17 @@
 // Copyright (c) The Move Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! Contains AST definitions for the specification language fragments of the Move language.
-//! Note that in this crate, specs are represented in AST form, whereas code is represented
-//! as bytecodes. Therefore we do not need an AST for the Move code itself.
+//! Contains definitions for the abstract syntax tree (AST) of the Move language.
 
 use crate::{
     exp_rewriter::ExpRewriterFunctions,
     model::{
-        EnvDisplay, FieldId, FunId, GlobalEnv, GlobalId, Loc, ModuleId, NodeId, Parameter,
-        QualifiedId, QualifiedInstId, SchemaId, SpecFunId, StructId, TypeParameter,
-        GHOST_MEMORY_PREFIX,
+        EnvDisplay, FieldId, FunId, FunctionEnv, GlobalEnv, GlobalId, Loc, ModuleId, NodeId,
+        Parameter, QualifiedId, QualifiedInstId, SchemaId, SpecFunId, StructId, TypeParameter,
+        GHOST_MEMORY_PREFIX, SCRIPT_MODULE_NAME,
     },
-    symbol::Symbol,
-    ty::{Type, TypeDisplayContext},
+    symbol::{Symbol, SymbolPool},
+    ty::{ReferenceKind, Type, TypeDisplayContext},
 };
 use internment::LocalIntern;
 use itertools::Itertools;
@@ -78,7 +76,7 @@ pub enum Attribute {
 // =================================================================================================
 /// # Conditions
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ConditionKind {
     LetPost(Symbol),
     LetPre(Symbol),
@@ -240,7 +238,7 @@ impl std::fmt::Display for QuantKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
     pub loc: Loc,
     pub kind: ConditionKind,
@@ -263,7 +261,7 @@ impl Condition {
 pub type PropertyBag = BTreeMap<Symbol, PropertyValue>;
 
 /// The value of a property.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PropertyValue {
     Value(Value),
     Symbol(Symbol),
@@ -271,19 +269,22 @@ pub enum PropertyValue {
 }
 
 /// Specification and properties associated with a language item.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Spec {
-    // The location of this specification, if available.
+    /// The location of this specification, if available.
     pub loc: Option<Loc>,
-    // The set of conditions associated with this item.
+    /// The set of conditions associated with this item.
     pub conditions: Vec<Condition>,
-    // Any pragma properties associated with this item.
+    /// Any pragma properties associated with this item.
     pub properties: PropertyBag,
-    // If this is a function, specs associated with individual code points.
+    /// If this is a function, specs associated with individual code points. Note: only used
+    /// with v1 compile chain.
     pub on_impl: BTreeMap<CodeOffset, Spec>,
-    // The map to store ghost variable update statements inlined in the function body
+    /// The map to store ghost variable update statements inlined in the function body.
     pub update_map: BTreeMap<NodeId, Condition>,
 }
+
+pub enum ImplSpecId {}
 
 impl Spec {
     pub fn has_conditions(&self) -> bool {
@@ -354,6 +355,24 @@ pub struct GlobalInvariant {
 }
 
 // =================================================================================================
+/// # Use Declarations
+
+/// Represents a `use` declaration in the source.
+#[derive(Debug, Clone)]
+pub struct UseDecl {
+    /// Location covered by this declaration.
+    pub loc: Loc,
+    /// The name of the module.
+    pub module_name: ModuleName,
+    /// The resolved module id, if it is known.
+    pub module_id: Option<ModuleId>,
+    /// An optional alias assigned to the module.
+    pub alias: Option<Symbol>,
+    /// A list of member uses, with optional aliasing.
+    pub members: Vec<(Loc, Symbol, Option<Symbol>)>,
+}
+
+// =================================================================================================
 /// # Expressions
 
 /// A type alias for temporaries. Those are locals used in bytecode.
@@ -378,10 +397,10 @@ pub enum ExpData {
     Invalid(NodeId),
     /// Represents a value.
     Value(NodeId, Value),
-    /// Represents a reference to a local variable introduced by a specification construct,
-    /// e.g. a quantifier.
+    /// Represents a reference to a local variable introduced in the AST.
     LocalVar(NodeId, Symbol),
-    /// Represents a reference to a temporary used in bytecode.
+    /// Represents a reference to a temporary used in bytecode, if this expression is associated
+    /// with bytecode.
     Temporary(NodeId, TempIndex),
     /// Represents a call to an operation. The `Operation` enum covers all builtin functions
     /// (including operators, constants, ...) as well as user functions.
@@ -422,6 +441,10 @@ pub enum ExpData {
     LoopCont(NodeId, bool),
     /// Assignment to a pattern. Can be a tuple pattern and a tuple expression.
     Assign(NodeId, Pattern, Exp),
+    /// Mutation of a lhs reference, as in `*lhs = rhs`.
+    Mutate(NodeId, Exp, Exp),
+    /// Represents a specification block, type is ().
+    SpecBlock(NodeId, Spec),
 }
 
 /// An internalized expression. We do use a wrapper around the underlying internement implementation
@@ -513,7 +536,9 @@ impl ExpData {
             | Loop(node_id, ..)
             | LoopCont(node_id, ..)
             | Return(node_id, ..)
-            | Assign(node_id, ..) => *node_id,
+            | Mutate(node_id, ..)
+            | Assign(node_id, ..)
+            | SpecBlock(node_id, ..) => *node_id,
         }
     }
 
@@ -602,7 +627,7 @@ impl ExpData {
                     let (mid, sid, sinst) = inst[0].require_struct();
                     result.insert((mid.qualified_inst(sid, sinst.to_owned()), label.to_owned()));
                 },
-                Call(id, Function(mid, fid, labels), _) => {
+                Call(id, SpecFunction(mid, fid, labels), _) => {
                     let inst = &env.get_node_instantiation(*id);
                     let module = env.get_module(*mid);
                     let fun = module.get_spec_fun(*fid);
@@ -632,6 +657,55 @@ impl ExpData {
         };
         self.visit(&mut visitor);
         temps
+    }
+
+    /// Returns the Move functions called by this expression
+    pub fn called_funs(&self) -> BTreeSet<QualifiedId<FunId>> {
+        let mut called = BTreeSet::new();
+        let mut visitor = |e: &ExpData| {
+            if let ExpData::Call(_, Operation::MoveFunction(mid, fid), _) = e {
+                called.insert(mid.qualified(*fid));
+            }
+        };
+        self.visit(&mut visitor);
+        called
+    }
+
+    pub fn has_exit(&self) -> bool {
+        // TODO: we currently cannot break out of a visitor, so we maintain a state when we
+        // are inside a loop.
+        let mut in_loop = false;
+        let mut has_exit = false;
+        let mut visitor = |post: bool, e: &ExpData| match e {
+            ExpData::Loop(_, _) => in_loop = !post,
+            ExpData::LoopCont(_, _) if !in_loop => has_exit = true,
+            _ => {},
+        };
+        self.visit_pre_post(&mut visitor);
+        has_exit
+    }
+
+    /// Returns true of the given expression is valid for a constant expression.
+    /// TODO: this mimics the current allowed expression forms the v1 compiler allows,
+    /// but is not documented as such in the book
+    pub fn is_valid_for_constant(&self) -> bool {
+        let mut valid = true;
+        let mut visitor = |e: &ExpData| match e {
+            ExpData::Value(..) | ExpData::Invalid(_) => {},
+            ExpData::Call(_, oper, args) => {
+                if !oper.is_builtin_op() || !args.iter().all(|e| e.is_valid_for_constant()) {
+                    valid = false;
+                }
+            },
+            ExpData::Sequence(_, items) => {
+                if !items.iter().all(|e| e.is_valid_for_constant()) {
+                    valid = false
+                }
+            },
+            _ => valid = false,
+        };
+        self.visit(&mut visitor);
+        valid
     }
 
     /// Visits expression, calling visitor on each sub-expression, depth first.
@@ -717,10 +791,40 @@ impl ExpData {
                 }
             },
             Assign(_, _, e) => e.visit_pre_post(visitor),
+            Mutate(_, lhs, rhs) => {
+                lhs.visit_pre_post(visitor);
+                rhs.visit_pre_post(visitor);
+            },
+            SpecBlock(_, spec) => Self::visit_pre_post_spec(spec, visitor),
             // Explicitly list all enum variants
             LoopCont(..) | Value(..) | LocalVar(..) | Temporary(..) | Invalid(..) => {},
         }
         visitor(true, self);
+    }
+
+    fn visit_pre_post_spec<F>(spec: &Spec, visitor: &mut F)
+    where
+        F: FnMut(bool, &ExpData),
+    {
+        for cond in &spec.conditions {
+            Self::visit_pre_post_cond(cond, visitor)
+        }
+        for impl_spec in spec.on_impl.values() {
+            Self::visit_pre_post_spec(impl_spec, visitor)
+        }
+        for cond in spec.update_map.values() {
+            Self::visit_pre_post_cond(cond, visitor)
+        }
+    }
+
+    fn visit_pre_post_cond<F>(cond: &Condition, visitor: &mut F)
+    where
+        F: FnMut(bool, &ExpData),
+    {
+        cond.exp.visit_pre_post(visitor);
+        for exp in &cond.additional_exps {
+            exp.visit_pre_post(visitor);
+        }
     }
 
     /// Rewrites this expression and sub-expression based on the rewriter function. The
@@ -797,7 +901,10 @@ impl ExpData {
             if let ExpData::Call(_, oper, _) = e {
                 use Operation::*;
                 match oper {
-                    Function(mid, ..) | Pack(mid, ..) | Select(mid, ..) | UpdateField(mid, ..) => {
+                    SpecFunction(mid, ..)
+                    | Pack(mid, ..)
+                    | Select(mid, ..)
+                    | UpdateField(mid, ..) => {
                         usage.insert(*mid);
                     },
                     _ => {},
@@ -899,17 +1006,23 @@ impl<'a> ExpRewriterFunctions for ExpRewriter<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Operation {
-    Function(ModuleId, SpecFunId, Option<Vec<MemoryLabel>>),
+    MoveFunction(ModuleId, FunId),
+    SpecFunction(ModuleId, SpecFunId, Option<Vec<MemoryLabel>>),
     Pack(ModuleId, StructId),
     Tuple,
+
+    // Specification specific
     Select(ModuleId, StructId, FieldId),
     UpdateField(ModuleId, StructId, FieldId),
     Result(usize),
     Index,
     Slice,
+    Range,
+    Implies,
+    Iff,
+    Identical,
 
     // Binary operators
-    Range,
     Add,
     Sub,
     Mul,
@@ -920,12 +1033,9 @@ pub enum Operation {
     Xor,
     Shl,
     Shr,
-    Implies,
-    Iff,
     And,
     Or,
     Eq,
-    Identical,
     Neq,
     Lt,
     Gt,
@@ -936,16 +1046,29 @@ pub enum Operation {
     Not,
     Cast,
 
-    // Builtin functions
+    // Builtin functions (impl and spec)
+    Exists(Option<MemoryLabel>),
+
+    // Builtin functions (impl only)
+    BorrowGlobal(ReferenceKind),
+    Borrow(ReferenceKind),
+    Deref,
+    MoveTo,
+    MoveFrom,
+    Freeze,
+    Abort,
+    Vector,
+
+    // Builtin functions (spec only)
     Len,
     TypeValue,
     TypeDomain,
     ResourceDomain,
     Global(Option<MemoryLabel>),
-    Exists(Option<MemoryLabel>),
     CanModify,
     Old,
     Trace(TraceKind),
+
     EmptyVec,
     SingleVec,
     UpdateVec,
@@ -1095,9 +1218,51 @@ impl Operation {
         use Operation::*;
         match self {
             Exists(_) | Global(_) => false,
-            Function(mid, fid, _) => check_pure(*mid, *fid),
+            SpecFunction(mid, fid, _) => check_pure(*mid, *fid),
             _ => true,
         }
+    }
+
+    /// Determines whether this is a builtin operator
+    pub fn is_builtin_op(&self) -> bool {
+        use Operation::*;
+        matches!(
+            self,
+            Tuple
+                | Index
+                | Slice
+                | Range
+                | Implies
+                | Iff
+                | Identical
+                | Add
+                | Sub
+                | Mul
+                | Mod
+                | Div
+                | BitOr
+                | BitAnd
+                | Xor
+                | Shl
+                | Shr
+                | And
+                | Or
+                | Eq
+                | Neq
+                | Lt
+                | Gt
+                | Le
+                | Ge
+                | Not
+                | Cast
+                | Len
+        )
+    }
+
+    /// Whether the operation allows to take reference parameters instead of values. This applies
+    /// currently to equality which can be used on `(T, T)`, `(T, &T)`, etc.
+    pub fn allows_ref_param_for_value(&self) -> bool {
+        matches!(self, Operation::Eq | Operation::Neq)
     }
 }
 
@@ -1134,7 +1299,7 @@ impl ExpData {
                 },
                 Call(_, oper, _) => match oper {
                     Exists(..) | Global(..) => is_pure = false,
-                    Function(mid, fid, _) => {
+                    SpecFunction(mid, fid, _) => {
                         let module = env.get_module(*mid);
                         let fun = module.get_spec_fun(*fid);
                         if !fun.used_memory.is_empty() {
@@ -1222,8 +1387,17 @@ impl ModuleName {
         self.1
     }
 
-    /// Determine whether this is a script. The move-compiler infrastructure uses MAX_ADDR
-    /// for pseudo modules created from scripts, so use this address to check.
+    /// Return the pseudo module name used for scripts. The move-compiler infrastructure uses MAX_ADDR
+    /// for pseudo modules created from scripts.
+    pub fn pseudo_script_name(pool: &SymbolPool) -> ModuleName {
+        let name = pool.make(SCRIPT_MODULE_NAME);
+        ModuleName(
+            Address::Numerical(AccountAddress::new([0xFF; AccountAddress::LENGTH])),
+            name,
+        )
+    }
+
+    /// Determine whether this is a script.
     pub fn is_script(&self) -> bool {
         self.0 == Address::Numerical(AccountAddress::new([0xFF; AccountAddress::LENGTH]))
     }
@@ -1337,7 +1511,29 @@ impl<'a> fmt::Display for QualifiedSymbolDisplay<'a> {
 impl ExpData {
     /// Creates a display of an expression which can be used in formatting.
     pub fn display<'a>(&'a self, env: &'a GlobalEnv) -> ExpDisplay<'a> {
-        ExpDisplay { env, exp: self }
+        ExpDisplay {
+            env,
+            exp: self,
+            fun_env: None,
+        }
+    }
+
+    /// Creates a display of an expression which can be used in formatting, based
+    /// on a function env for getting names of locals and type parameters.
+    pub fn display_for_fun<'a>(&'a self, fun_env: FunctionEnv<'a>) -> ExpDisplay<'a> {
+        ExpDisplay {
+            env: fun_env.module_env.env,
+            exp: self,
+            fun_env: Some(fun_env),
+        }
+    }
+
+    fn display_cont<'a>(&'a self, other: &ExpDisplay<'a>) -> ExpDisplay<'a> {
+        ExpDisplay {
+            env: other.env,
+            exp: self,
+            fun_env: other.fun_env.clone(),
+        }
     }
 }
 
@@ -1345,6 +1541,7 @@ impl ExpData {
 pub struct ExpDisplay<'a> {
     env: &'a GlobalEnv,
     exp: &'a ExpData,
+    fun_env: Option<FunctionEnv<'a>>,
 }
 
 impl<'a> fmt::Display for ExpDisplay<'a> {
@@ -1353,30 +1550,42 @@ impl<'a> fmt::Display for ExpDisplay<'a> {
         match self.exp {
             Invalid(_) => write!(f, "*invalid*"),
             Value(_, v) => write!(f, "{}", self.env.display(v)),
-            LocalVar(_, name) => write!(f, "{}", name.display(self.env.symbol_pool())),
-            Temporary(_, idx) => write!(f, "$t{}", idx),
+            LocalVar(_, name) => {
+                write!(f, "{}", name.display(self.env.symbol_pool()))
+            },
+            Temporary(_, idx) => {
+                if let Some(name) = self
+                    .fun_env
+                    .as_ref()
+                    .and_then(|fe| fe.get_parameters().get(*idx).map(|p| p.0))
+                {
+                    write!(f, "{}", name.display(self.env.symbol_pool()))
+                } else {
+                    write!(f, "$t{}", idx)
+                }
+            },
             Call(node_id, oper, args) => {
                 write!(
                     f,
                     "{}({})",
-                    oper.display(self.env, *node_id),
+                    oper.display_for_exp(self, *node_id),
                     self.fmt_exps(args)
                 )
             },
             Lambda(_, pat, body) => {
-                write!(f, "|{}| {}", self.fmt_pattern(pat), body.display(self.env))
+                write!(f, "|{}| {}", self.fmt_pattern(pat), body.display_cont(self))
             },
             Block(_, pat, binding, body) => {
                 write!(
                     f,
-                    "{{let {}{}; {}}}",
-                    self.fmt_pattern(pat),
+                    "{{\n  let {}{};\n  {}\n}}",
+                    indent(self.fmt_pattern(pat)),
                     if let Some(exp) = binding {
-                        format!(" = {}", exp.display(self.env))
+                        indent(format!(" = {}", exp.display_cont(self)))
                     } else {
                         "".to_string()
                     },
-                    body.display(self.env)
+                    indent(body.display_cont(self))
                 )
             },
             Quant(_, kind, ranges, triggers, opt_where, body) => {
@@ -1386,7 +1595,7 @@ impl<'a> fmt::Display for ExpDisplay<'a> {
                     .collect_vec()
                     .join("");
                 let where_str = if let Some(exp) = opt_where {
-                    format!(" where {}", exp.display(self.env))
+                    format!(" where {}", exp.display_cont(self))
                 } else {
                     "".to_string()
                 };
@@ -1397,19 +1606,19 @@ impl<'a> fmt::Display for ExpDisplay<'a> {
                     self.fmt_quant_ranges(ranges),
                     triggers_str,
                     where_str,
-                    body.display(self.env)
+                    body.display_cont(self)
                 )
             },
             Invoke(_, fun, args) => {
-                write!(f, "({})({})", fun.display(self.env), self.fmt_exps(args))
+                write!(f, "({})({})", fun.display_cont(self), self.fmt_exps(args))
             },
             IfElse(_, cond, if_exp, else_exp) => {
                 write!(
                     f,
-                    "(if {} {{{}}} else {{{}}})",
-                    cond.display(self.env),
-                    if_exp.display(self.env),
-                    else_exp.display(self.env)
+                    "if {} {{\n  {}\n}} else {{\n  {}\n}}",
+                    cond.display_cont(self),
+                    indent(if_exp.display_cont(self)),
+                    indent(else_exp.display_cont(self))
                 )
             },
             Sequence(_, es) => {
@@ -1417,36 +1626,61 @@ impl<'a> fmt::Display for ExpDisplay<'a> {
                     if i > 0 {
                         writeln!(f, ";")?
                     }
-                    write!(f, "{}", e.display(self.env))?
+                    write!(f, "{}", e.display_cont(self))?
                 }
                 Ok(())
             },
             Loop(_, e) => {
-                write!(f, "loop {{\n{}\n}}", e.display(self.env))
+                write!(f, "loop {{\n  {}\n}}", indent(e.display_cont(self)))
             },
             LoopCont(_, true) => write!(f, "continue"),
             LoopCont(_, false) => write!(f, "break"),
-            Return(_, e) => write!(f, "return {}", e.display(self.env)),
+            Return(_, e) => write!(f, "return {}", e.display_cont(self)),
             Assign(_, lhs, rhs) => {
-                write!(f, "{} = {}", self.fmt_pattern(lhs), rhs.display(self.env))
+                write!(f, "{} = {}", self.fmt_pattern(lhs), rhs.display_cont(self))
+            },
+            Mutate(_, lhs, rhs) => {
+                write!(f, "{} = {}", lhs.display_cont(self), rhs.display_cont(self))
+            },
+            SpecBlock(_, spec) => {
+                write!(f, "{}", self.env.display(spec))
             },
         }
     }
 }
 
+fn indent(fmt: impl fmt::Display) -> String {
+    let s = fmt.to_string();
+    s.replace('\n', "\n  ")
+}
+
 impl<'a> ExpDisplay<'a> {
+    fn type_ctx(&self) -> TypeDisplayContext<'a> {
+        if let Some(fe) = &self.fun_env {
+            fe.get_type_display_ctx()
+        } else {
+            TypeDisplayContext::new(self.env)
+        }
+    }
+
     fn fmt_patterns(&self, patterns: &[Pattern]) -> String {
         patterns.iter().map(|pat| self.fmt_pattern(pat)).join(", ")
     }
 
     pub fn fmt_pattern(&self, pat: &Pattern) -> String {
         match pat {
-            Pattern::Var(_, name) => {
-                format!("{}", name.display(self.env.symbol_pool()))
+            Pattern::Var(id, name) => {
+                let tctx = self.type_ctx();
+                let ty = self.env.get_node_type(*id);
+                format!(
+                    "{}: {}",
+                    name.display(self.env.symbol_pool()),
+                    ty.display(&tctx)
+                )
             },
             Pattern::Tuple(_, args) => format!("({})", self.fmt_patterns(args)),
             Pattern::Struct(_, struct_id, args) => {
-                let tctx = self.env.get_type_display_ctx();
+                let tctx = self.type_ctx();
                 let inst_str = if !struct_id.inst.is_empty() {
                     format!(
                         "<{}>",
@@ -1485,13 +1719,15 @@ impl<'a> ExpDisplay<'a> {
     fn fmt_quant_ranges(&self, ranges: &[(Pattern, Exp)]) -> String {
         ranges
             .iter()
-            .map(|(pat, domain)| format!("{}: {}", self.fmt_pattern(pat), domain.display(self.env)))
+            .map(|(pat, domain)| {
+                format!("{}: {}", self.fmt_pattern(pat), domain.display_cont(self))
+            })
             .join(", ")
     }
 
     fn fmt_exps(&self, exps: &[Exp]) -> String {
         exps.iter()
-            .map(|e| e.display(self.env).to_string())
+            .map(|e| e.display_cont(self).to_string())
             .join(", ")
     }
 }
@@ -1503,6 +1739,25 @@ impl Operation {
             env,
             oper: self,
             node_id,
+            tctx: TypeDisplayContext::new(env),
+        }
+    }
+
+    fn display_for_exp<'a>(
+        &'a self,
+        exp_display: &'a ExpDisplay,
+        node_id: NodeId,
+    ) -> OperationDisplay<'a> {
+        let tctx = if let Some(fe) = &exp_display.fun_env {
+            fe.get_type_display_ctx()
+        } else {
+            TypeDisplayContext::new(exp_display.env)
+        };
+        OperationDisplay {
+            env: exp_display.env,
+            oper: self,
+            node_id,
+            tctx,
         }
     }
 }
@@ -1512,13 +1767,14 @@ pub struct OperationDisplay<'a> {
     env: &'a GlobalEnv,
     node_id: NodeId,
     oper: &'a Operation,
+    tctx: TypeDisplayContext<'a>,
 }
 
 impl<'a> fmt::Display for OperationDisplay<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         use Operation::*;
         match self.oper {
-            Function(mid, fid, labels_opt) => {
+            SpecFunction(mid, fid, labels_opt) => {
                 write!(f, "{}", self.fun_str(mid, fid))?;
                 if let Some(labels) = labels_opt {
                     write!(
@@ -1528,6 +1784,15 @@ impl<'a> fmt::Display for OperationDisplay<'a> {
                     )?;
                 }
                 Ok(())
+            },
+            MoveFunction(mid, fid) => {
+                write!(
+                    f,
+                    "{}",
+                    self.env
+                        .get_function(mid.qualified(*fid))
+                        .get_full_name_str()
+                )
             },
             Global(label_opt) => {
                 write!(f, "global")?;
@@ -1557,11 +1822,10 @@ impl<'a> fmt::Display for OperationDisplay<'a> {
         // If operation has a type instantiation, add it.
         let type_inst = self.env.get_node_instantiation(self.node_id);
         if !type_inst.is_empty() {
-            let tctx = TypeDisplayContext::new(self.env);
             write!(
                 f,
                 "<{}>",
-                type_inst.iter().map(|ty| ty.display(&tctx)).join(", ")
+                type_inst.iter().map(|ty| ty.display(&self.tctx)).join(", ")
             )?;
         }
         Ok(())
@@ -1630,7 +1894,7 @@ impl<'a> fmt::Display for EnvDisplay<'a, Condition> {
                     exps[1].display(self.env)
                 )?;
                 if exps.len() > 2 {
-                    write!(f, "if {}", exps[2].display(self.env))?;
+                    write!(f, " if {}", exps[2].display(self.env))?;
                 }
                 write!(f, ";")?
             },

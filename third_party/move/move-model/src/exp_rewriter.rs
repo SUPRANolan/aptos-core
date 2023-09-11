@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    ast::{Exp, ExpData, MemoryLabel, Operation, Pattern, TempIndex, Value},
+    ast::{Exp, ExpData, MemoryLabel, Operation, Pattern, Spec, TempIndex, Value},
     model::{GlobalEnv, ModuleId, NodeId, SpecVarId},
     symbol::Symbol,
     ty::Type,
@@ -160,6 +160,9 @@ pub trait ExpRewriterFunctions {
         None
     }
     fn rewrite_if_else(&mut self, id: NodeId, cond: &Exp, then: &Exp, else_: &Exp) -> Option<Exp> {
+        None
+    }
+    fn rewrite_spec(&mut self, id: NodeId, spec: &Spec) -> Option<Spec> {
         None
     }
 
@@ -381,6 +384,25 @@ pub trait ExpRewriterFunctions {
                     exp
                 }
             },
+            Mutate(id, lhs, rhs) => {
+                let (id_changed, new_id) = self.internal_rewrite_id(id);
+                let (lhs_changed, new_lhs) = self.internal_rewrite_exp(lhs);
+                let (rhs_changed, new_rhs) = self.internal_rewrite_exp(rhs);
+                if id_changed || lhs_changed || rhs_changed {
+                    Mutate(new_id, new_lhs, new_rhs).into_exp()
+                } else {
+                    exp
+                }
+            },
+            SpecBlock(id, spec) => {
+                let (id_changed, new_id) = self.internal_rewrite_id(id);
+                let (spec_changed, new_spec) = self.internal_rewrite_spec(&new_id, spec);
+                if id_changed || spec_changed {
+                    SpecBlock(new_id, new_spec).into_exp()
+                } else {
+                    exp
+                }
+            },
             // This can happen since we are calling the rewriter during type checking, and
             // we may have encountered an error which is represented as an Invalid expression.
             Invalid(id) => Invalid(*id).into_exp(),
@@ -392,6 +414,14 @@ pub trait ExpRewriterFunctions {
             (true, new_pat)
         } else {
             (false, pat.clone())
+        }
+    }
+
+    fn internal_rewrite_spec(&mut self, id: &NodeId, spec: &Spec) -> (bool, Spec) {
+        if let Some(new_spec) = self.rewrite_spec(*id, spec) {
+            (true, new_spec)
+        } else {
+            (false, spec.clone())
         }
     }
 

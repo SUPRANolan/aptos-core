@@ -22,7 +22,7 @@ impl Test for FrameworkUpgrade {
 }
 
 impl NetworkTest for FrameworkUpgrade {
-    fn run<'t>(&self, ctx: &mut NetworkContext<'t>) -> Result<()> {
+    fn run(&self, ctx: &mut NetworkContext<'_>) -> Result<()> {
         let runtime = Runtime::new()?;
 
         // Get the different versions we're testing with
@@ -102,10 +102,7 @@ impl NetworkTest for FrameworkUpgrade {
         // Update the sequence number for the root account
         let root_account = ctx.swarm().chain_info().root_account().address();
         // Test the module publishing workflow
-        *ctx.swarm()
-            .chain_info()
-            .root_account()
-            .sequence_number_mut() = runtime
+        let sequence_number = runtime
             .block_on(
                 ctx.swarm()
                     .chain_info()
@@ -115,6 +112,10 @@ impl NetworkTest for FrameworkUpgrade {
             .unwrap()
             .inner()
             .sequence_number;
+        ctx.swarm()
+            .chain_info()
+            .root_account()
+            .set_sequence_number(sequence_number);
 
         // Generate some traffic
         let duration = Duration::from_secs(30);

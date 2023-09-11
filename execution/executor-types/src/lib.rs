@@ -3,14 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 #![forbid(unsafe_code)]
 
+use crate::state_checkpoint_output::StateCheckpointOutput;
 use anyhow::Result;
-use aptos_block_partitioner::types::SubBlock;
 use aptos_crypto::{
     hash::{EventAccumulatorHasher, TransactionAccumulatorHasher, ACCUMULATOR_PLACEHOLDER_HASH},
     HashValue,
 };
 use aptos_scratchpad::{ProofRead, SparseMerkleTree};
 use aptos_types::{
+    block_executor::partitioner::ExecutableBlock,
     contract_event::ContractEvent,
     epoch_state::EpochState,
     ledger_info::LedgerInfoWithSignatures,
@@ -23,8 +24,8 @@ use aptos_types::{
     write_set::WriteSet,
 };
 pub use error::Error;
-pub use executed_block::ExecutedBlock;
 pub use executed_chunk::ExecutedChunk;
+pub use ledger_update_output::LedgerUpdateOutput;
 pub use parsed_transaction_output::ParsedTransactionOutput;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -38,10 +39,12 @@ use std::{
 };
 
 mod error;
-mod executed_block;
 mod executed_chunk;
+pub mod execution_output;
 pub mod in_memory_state_calculator;
+mod ledger_update_output;
 mod parsed_transaction_output;
+pub mod state_checkpoint_output;
 
 pub trait ChunkExecutorTrait: Send + Sync {
     /// Verifies the transactions based on the provided proofs and ledger info. If the transactions
@@ -87,12 +90,33 @@ pub trait BlockExecutorTrait: Send + Sync {
     /// Reset the internal state including cache with newly fetched latest committed block from storage.
     fn reset(&self) -> Result<()>;
 
-    /// Executes a block.
+    /// Executes a block - TBD, this API will be removed in favor of `execute_and_state_checkpoint`, followed
+    /// by `ledger_update` once we have ledger update as a separate pipeline phase.
     fn execute_block(
         &self,
         block: ExecutableBlock,
         parent_block_id: HashValue,
         maybe_block_gas_limit: Option<u64>,
+    ) -> Result<StateComputeResult, Error> {
+        let block_id = block.block_id;
+        let state_checkpoint_output =
+            self.execute_and_state_checkpoint(block, parent_block_id, maybe_block_gas_limit)?;
+        self.ledger_update(block_id, parent_block_id, state_checkpoint_output)
+    }
+
+    /// Executes a block and returns the state checkpoint output.
+    fn execute_and_state_checkpoint(
+        &self,
+        block: ExecutableBlock,
+        parent_block_id: HashValue,
+        maybe_block_gas_limit: Option<u64>,
+    ) -> Result<StateCheckpointOutput, Error>;
+
+    fn ledger_update(
+        &self,
+        block_id: HashValue,
+        parent_block_id: HashValue,
+        state_checkpoint_output: StateCheckpointOutput,
     ) -> Result<StateComputeResult, Error>;
 
     /// Saves eligible blocks to persistent storage.
@@ -125,48 +149,6 @@ pub trait BlockExecutorTrait: Send + Sync {
 
     /// Finishes the block executor by releasing memory held by inner data structures(SMT).
     fn finish(&self);
-}
-
-pub struct ExecutableBlock {
-    pub block_id: HashValue,
-    pub transactions: ExecutableTransactions,
-}
-
-impl ExecutableBlock {
-    pub fn new(block_id: HashValue, transactions: ExecutableTransactions) -> Self {
-        Self {
-            block_id,
-            transactions,
-        }
-    }
-}
-
-impl From<(HashValue, Vec<Transaction>)> for ExecutableBlock {
-    fn from((block_id, transactions): (HashValue, Vec<Transaction>)) -> Self {
-        Self::new(block_id, ExecutableTransactions::Unsharded(transactions))
-    }
-}
-
-pub enum ExecutableTransactions {
-    Unsharded(Vec<Transaction>),
-    Sharded(Vec<SubBlock>),
-}
-
-impl ExecutableTransactions {
-    pub fn num_transactions(&self) -> usize {
-        match self {
-            ExecutableTransactions::Unsharded(transactions) => transactions.len(),
-            ExecutableTransactions::Sharded(sub_blocks) => {
-                sub_blocks.iter().map(|sub_block| sub_block.len()).sum()
-            },
-        }
-    }
-}
-
-impl From<Vec<Transaction>> for ExecutableTransactions {
-    fn from(txns: Vec<Transaction>) -> Self {
-        Self::Unsharded(txns)
-    }
 }
 
 #[derive(Clone)]

@@ -1,7 +1,7 @@
 // Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{components::ProposalMetadata, ExecutionMode, ReleaseConfig};
+use crate::{aptos_framework_path, components::ProposalMetadata, ExecutionMode, ReleaseConfig};
 use anyhow::Result;
 use aptos::{
     common::types::CliCommand,
@@ -39,13 +39,6 @@ pub struct NetworkConfig {
 #[derive(Deserialize)]
 struct CreateProposalEvent {
     proposal_id: U64,
-}
-
-fn aptos_framework_path() -> PathBuf {
-    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf();
-    path.pop();
-    path.push("framework/aptos-framework");
-    path
 }
 
 impl NetworkConfig {
@@ -366,20 +359,20 @@ async fn execute_release(
     release_config: ReleaseConfig,
     network_config: NetworkConfig,
     output_dir: Option<PathBuf>,
+    validate_release: bool,
 ) -> Result<()> {
     let scripts_path = TempPath::new();
     scripts_path.create_as_dir()?;
 
-    release_config.generate_release_proposal_scripts(
-        if let Some(dir) = &output_dir {
-            dir.as_path()
-        } else {
-            scripts_path.path()
-        },
-    )?;
+    let proposal_folder = if let Some(dir) = &output_dir {
+        dir.as_path()
+    } else {
+        scripts_path.path()
+    };
+    release_config.generate_release_proposal_scripts(proposal_folder)?;
 
-    for proposal in release_config.proposals {
-        let mut proposal_path = scripts_path.path().to_path_buf();
+    for proposal in &release_config.proposals {
+        let mut proposal_path = proposal_folder.to_path_buf();
         proposal_path.push("sources");
         proposal_path.push(&release_config.name);
         proposal_path.push(proposal.name.as_str());
@@ -405,14 +398,6 @@ async fn execute_release(
                     .submit_and_execute_multi_step_proposal(&proposal.metadata, script_paths)
                     .await?;
 
-                network_config.set_fast_resolve(43200).await?;
-            },
-            ExecutionMode::SingleStep => {
-                network_config.set_fast_resolve(30).await?;
-                // Single step governance proposal;
-                network_config
-                    .submit_and_execute_proposal(&proposal.metadata, script_paths)
-                    .await?;
                 network_config.set_fast_resolve(43200).await?;
             },
             ExecutionMode::RootSigner => {
@@ -447,6 +432,9 @@ async fn execute_release(
                 }
             },
         };
+        if validate_release {
+            release_config.validate_upgrade(&network_config.endpoint, proposal)?;
+        }
     }
     Ok(())
 }
@@ -463,6 +451,11 @@ pub async fn validate_config_and_generate_release(
     network_config: NetworkConfig,
     output_dir: Option<PathBuf>,
 ) -> Result<()> {
-    execute_release(release_config.clone(), network_config.clone(), output_dir).await?;
-    release_config.validate_upgrade(network_config.endpoint)
+    execute_release(
+        release_config.clone(),
+        network_config.clone(),
+        output_dir,
+        true,
+    )
+    .await
 }

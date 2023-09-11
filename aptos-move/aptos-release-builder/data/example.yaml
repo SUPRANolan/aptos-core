@@ -1,15 +1,6 @@
 ---
 remote_endpoint: ~
 proposals:
-  - name: custom
-    metadata:
-      title: ""
-      description: ""
-      source_code_url: ""
-      discussion_url: ""
-    execution_mode: SingleStep
-    update_sequence:
-      - RawScript: data/proposals/empty.move
   - name: framework
     metadata:
       title: ""
@@ -75,4 +66,4 @@ proposals:
       - Execution:
           V1:
             transaction_shuffler_type: no_shuffling
-      - RawScript: data/proposals/empty_multi_step.move
+      - RawScript: data/example_proposals/empty_multi_step.move
