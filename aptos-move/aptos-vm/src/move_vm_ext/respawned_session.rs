@@ -70,6 +70,19 @@ impl<'r, 'l> RespawnedSession<'r, 'l> {
         let additional_change_set = self.with_session_mut(|session| {
             session.take().unwrap().finish(&mut (), change_set_configs)
         })?;
+        if additional_change_set.has_creation() {
+            // After respawning, for example, in the epilogue, there shouldn't be new slots
+            // created, otherwise there's a potential vulnerability like this:
+            // 1. slot created by the user
+            // 2. another user transaction deletes the slot and claims the refund
+            // 3. in the epilogue the same slot gets recreated, and the final write set will have
+            //    a ModifyWithMetadata carrying the original metadata
+            // 4. user keeps doing the same and repeatedly claim refund out of the slot.
+            return Err(VMStatus::error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+                err_msg("Unexpected storage allocation after respawning session."),
+            ));
+        }
         let mut change_set = self.into_heads().state_view.change_set;
         change_set
             .squash_additional_change_set(additional_change_set, change_set_configs)
@@ -138,7 +151,7 @@ mod test {
     use aptos_language_e2e_tests::data_store::FakeDataStore;
     use aptos_types::write_set::WriteOp;
     use aptos_vm_types::check_change_set::CheckChangeSet;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     /// A mock for testing. Always succeeds on checking a change set.
     struct NoOpChangeSetChecker;
@@ -174,23 +187,23 @@ mod test {
         base_view.set_legacy(key("aggregator_both"), serialize(&60));
         base_view.set_legacy(key("aggregator_delta_set"), serialize(&70));
 
-        let resource_write_set = HashMap::from([
+        let resource_write_set = BTreeMap::from([
             (key("resource_both"), write(80)),
             (key("resource_write_set"), write(90)),
         ]);
 
-        let module_write_set = HashMap::from([
+        let module_write_set = BTreeMap::from([
             (key("module_both"), write(100)),
             (key("module_write_set"), write(110)),
         ]);
 
-        let aggregator_write_set = HashMap::from([
+        let aggregator_write_set = BTreeMap::from([
             (key("aggregator_both"), write(120)),
             (key("aggregator_write_set"), write(130)),
         ]);
 
         let aggregator_delta_set =
-            HashMap::from([(key("aggregator_delta_set"), delta_add(1, 1000))]);
+            BTreeMap::from([(key("aggregator_delta_set"), delta_add(1, 1000))]);
 
         let change_set = VMChangeSet::new(
             resource_write_set,

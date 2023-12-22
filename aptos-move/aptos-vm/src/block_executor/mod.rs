@@ -38,7 +38,7 @@ use aptos_vm_types::output::VMOutput;
 use move_core_types::vm_status::VMStatus;
 use once_cell::sync::OnceCell;
 use rayon::{prelude::*, ThreadPool};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 impl BlockExecutorTransaction for PreprocessedTransaction {
     type Event = ContractEvent;
@@ -90,7 +90,7 @@ impl BlockExecutorTransactionOutput for AptosTransactionOutput {
 
     /// Should never be called after incorporate_delta_writes, as it
     /// will consume vm_output to prepare an output with deltas.
-    fn resource_write_set(&self) -> HashMap<StateKey, WriteOp> {
+    fn resource_write_set(&self) -> BTreeMap<StateKey, WriteOp> {
         self.vm_output
             .lock()
             .as_ref()
@@ -102,7 +102,7 @@ impl BlockExecutorTransactionOutput for AptosTransactionOutput {
 
     /// Should never be called after incorporate_delta_writes, as it
     /// will consume vm_output to prepare an output with deltas.
-    fn module_write_set(&self) -> HashMap<StateKey, WriteOp> {
+    fn module_write_set(&self) -> BTreeMap<StateKey, WriteOp> {
         self.vm_output
             .lock()
             .as_ref()
@@ -114,7 +114,7 @@ impl BlockExecutorTransactionOutput for AptosTransactionOutput {
 
     /// Should never be called after incorporate_delta_writes, as it
     /// will consume vm_output to prepare an output with deltas.
-    fn aggregator_v1_write_set(&self) -> HashMap<StateKey, WriteOp> {
+    fn aggregator_v1_write_set(&self) -> BTreeMap<StateKey, WriteOp> {
         self.vm_output
             .lock()
             .as_ref()
@@ -126,7 +126,7 @@ impl BlockExecutorTransactionOutput for AptosTransactionOutput {
 
     /// Should never be called after incorporate_delta_writes, as it
     /// will consume vm_output to prepare an output with deltas.
-    fn aggregator_v1_delta_set(&self) -> HashMap<StateKey, DeltaOp> {
+    fn aggregator_v1_delta_set(&self) -> BTreeMap<StateKey, DeltaOp> {
         self.vm_output
             .lock()
             .as_ref()
@@ -180,11 +180,14 @@ impl BlockExecutorTransactionOutput for AptosTransactionOutput {
 pub struct BlockAptosVM();
 
 impl BlockAptosVM {
-    fn verify_transactions(transactions: Vec<Transaction>) -> Vec<PreprocessedTransaction> {
+    fn verify_transactions(
+        vm: &AptosVM,
+        transactions: Vec<Transaction>,
+    ) -> Vec<PreprocessedTransaction> {
         transactions
             .into_par_iter()
             .with_min_len(25)
-            .map(preprocess_transaction::<AptosVM>)
+            .map(|txn| preprocess_transaction(vm, txn))
             .collect()
     }
 
@@ -206,8 +209,9 @@ impl BlockAptosVM {
         // TODO: state sync runs this code but doesn't need to verify signatures
         let signature_verification_timer =
             BLOCK_EXECUTOR_SIGNATURE_VERIFICATION_SECONDS.start_timer();
+        let aptos_vm = AptosVM::new_from_state_view(state_view);
         let signature_verified_block =
-            executor_thread_pool.install(|| Self::verify_transactions(transactions));
+            executor_thread_pool.install(|| Self::verify_transactions(&aptos_vm, transactions));
         drop(signature_verification_timer);
 
         let num_txns = signature_verified_block.len();

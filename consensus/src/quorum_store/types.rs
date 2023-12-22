@@ -54,6 +54,10 @@ impl PersistedValue {
     pub fn batch_info(&self) -> &BatchInfo {
         &self.info
     }
+
+    pub fn payload(&self) -> &Option<Vec<SignedTransaction>> {
+        &self.maybe_payload
+    }
 }
 
 impl Deref for PersistedValue {
@@ -180,6 +184,16 @@ impl Batch {
                 "Payload gas unit price doesn't match batch info"
             )
         }
+        Ok(())
+    }
+
+    /// Verify the batch, and that it matches the requested digest
+    pub fn verify_with_digest(&self, requested_digest: HashValue) -> anyhow::Result<()> {
+        ensure!(
+            requested_digest == *self.digest(),
+            "Response digest doesn't match the request"
+        );
+        self.verify()?;
         Ok(())
     }
 

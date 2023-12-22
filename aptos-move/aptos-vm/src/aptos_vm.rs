@@ -53,7 +53,9 @@ use fail::fail_point;
 use move_binary_format::{
     access::ModuleAccess,
     compatibility::Compatibility,
+    deserializer::DeserializerConfig,
     errors::{verification_error, Location, PartialVMError, VMError, VMResult},
+    file_format_common::{IDENTIFIER_SIZE_MAX, LEGACY_IDENTIFIER_SIZE_MAX},
     CompiledModule, IndexKind,
 };
 use move_core_types::{
@@ -443,7 +445,7 @@ impl AptosVM {
                     // Gerardo: consolidate the extended validation to verifier.
                     verifier::event_validation::verify_no_event_emission_in_script(
                         script.code(),
-                        session.get_vm_config().max_binary_format_version,
+                        &session.get_vm_config().deserializer_config,
                     )?;
 
                     let args =
@@ -763,7 +765,10 @@ impl AptosVM {
         module_bundle: &ModuleBundle,
     ) -> VMResult<()> {
         for module_blob in module_bundle.iter() {
-            match CompiledModule::deserialize(module_blob.code()) {
+            match CompiledModule::deserialize_with_config(
+                module_blob.code(),
+                &session.get_vm_config().deserializer_config,
+            ) {
                 Ok(module) => {
                     // verify the module doesn't exist
                     if session.load_module(&module.self_id()).is_ok() {
@@ -837,9 +842,19 @@ impl AptosVM {
         } else {
             5
         };
+        let max_identifier_size = if self
+            .0
+            .get_features()
+            .is_enabled(FeatureFlag::LIMIT_MAX_IDENTIFIER_LENGTH)
+        {
+            IDENTIFIER_SIZE_MAX
+        } else {
+            LEGACY_IDENTIFIER_SIZE_MAX
+        };
+        let config = DeserializerConfig::new(max_version, max_identifier_size);
         let mut result = vec![];
         for module_blob in modules.iter() {
-            match CompiledModule::deserialize_with_max_version(module_blob.code(), max_version) {
+            match CompiledModule::deserialize_with_config(module_blob.code(), &config) {
                 Ok(module) => {
                     result.push(module);
                 },
@@ -1014,8 +1029,12 @@ impl AptosVM {
                     }
                 }
             }
-            aptos_framework::verify_module_metadata(m, self.0.get_features())
-                .map_err(|err| Self::metadata_validation_error(&err.to_string()))?;
+            aptos_framework::verify_module_metadata(
+                m,
+                self.0.get_features(),
+                self.0.get_timed_features(),
+            )
+            .map_err(|err| Self::metadata_validation_error(&err.to_string()))?;
         }
         verifier::resource_groups::validate_resource_groups(
             session,
@@ -1084,6 +1103,27 @@ impl AptosVM {
             // cost accounting.
             resolver.release_resource_group_cache();
             session = self.0.new_session(resolver, SessionId::txn(txn));
+        }
+
+        if let aptos_types::transaction::authenticator::TransactionAuthenticator::FeePayer {
+            ..
+        } = &txn.authenticator_ref()
+        {
+            if self
+                .0
+                .get_features()
+                .is_enabled(FeatureFlag::SPONSORED_AUTOMATIC_ACCOUNT_CREATION)
+            {
+                if let Err(err) = session.execute_function_bypass_visibility(
+                    &ACCOUNT_MODULE,
+                    CREATE_ACCOUNT_IF_DOES_NOT_EXIST,
+                    vec![],
+                    serialize_values(&vec![MoveValue::Address(txn.sender())]),
+                    gas_meter,
+                ) {
+                    return discard_error_vm_status(err.into());
+                };
+            }
         }
 
         let storage_gas_params = unwrap_or_discard!(self.0.get_storage_gas_parameters(log_context));
@@ -1590,7 +1630,18 @@ impl VMValidator for AptosVM {
     ) -> VMValidatorResult {
         let _timer = TXN_VALIDATION_SECONDS.start_timer();
         let log_context = AdapterLogSchema::new(state_view.id(), 0);
-        let txn = match Self::check_signature(transaction) {
+
+        if !self
+            .0
+            .get_features()
+            .is_enabled(FeatureFlag::SINGLE_SENDER_AUTHENTICATOR)
+        {
+            if let aptos_types::transaction::authenticator::TransactionAuthenticator::SingleSender{ .. } = transaction.authenticator_ref() {
+                return VMValidatorResult::error(StatusCode::FEATURE_UNDER_GATING);
+            }
+        }
+
+        let txn = match self.check_signature(transaction) {
             Ok(t) => t,
             _ => {
                 return VMValidatorResult::error(StatusCode::INVALID_SIGNATURE);
@@ -1636,7 +1687,19 @@ impl VMAdapter for AptosVM {
         self.0.new_session(resolver, session_id)
     }
 
-    fn check_signature(txn: SignedTransaction) -> Result<SignatureCheckedTransaction> {
+    fn check_signature(&self, txn: SignedTransaction) -> Result<SignatureCheckedTransaction> {
+        if let aptos_types::transaction::authenticator::TransactionAuthenticator::FeePayer {
+            ..
+        } = &txn.authenticator_ref()
+        {
+            if self
+                .0
+                .get_features()
+                .is_enabled(FeatureFlag::FEE_PAYER_ACCOUNT_OPTIONAL)
+            {
+                return txn.check_fee_payer_signature();
+            }
+        }
         txn.check_signature()
     }
 

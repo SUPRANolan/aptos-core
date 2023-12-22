@@ -58,6 +58,7 @@ pub struct AptosVMImpl {
     storage_gas_params: Result<StorageGasParameters, String>,
     version: Option<Version>,
     features: Features,
+    timed_features: TimedFeatures,
 }
 
 pub fn gas_config(
@@ -154,7 +155,7 @@ impl AptosVMImpl {
             gas_feature_version,
             chain_id.id(),
             features.clone(),
-            timed_features,
+            timed_features.clone(),
         )
         .expect("should be able to create Move VM; check if there are duplicated natives");
 
@@ -167,6 +168,7 @@ impl AptosVMImpl {
             storage_gas_params,
             version,
             features,
+            timed_features,
         }
     }
 
@@ -214,6 +216,10 @@ impl AptosVMImpl {
 
     pub fn get_features(&self) -> &Features {
         &self.features
+    }
+
+    pub fn get_timed_features(&self) -> &TimedFeatures {
+        &self.timed_features
     }
 
     pub fn check_gas(
@@ -368,6 +374,7 @@ impl AptosVMImpl {
             .iter()
             .map(|auth_key| MoveValue::vector_u8(auth_key.to_vec()))
             .collect();
+
         let (prologue_function_name, args) = if let (Some(fee_payer), Some(fee_payer_auth_key)) = (
             txn_data.fee_payer(),
             txn_data.fee_payer_authentication_key.as_ref(),
@@ -419,7 +426,6 @@ impl AptosVMImpl {
             .execute_function_bypass_visibility(
                 &APTOS_TRANSACTION_VALIDATION.module_id(),
                 prologue_function_name,
-                // TODO: Deprecate this once we remove gas currency on the Move side.
                 vec![],
                 serialize_values(&args),
                 &mut gas_meter,
@@ -448,7 +454,6 @@ impl AptosVMImpl {
             .execute_function_bypass_visibility(
                 &APTOS_TRANSACTION_VALIDATION.module_id(),
                 &APTOS_TRANSACTION_VALIDATION.module_prologue_name,
-                // TODO: Deprecate this once we remove gas currency on the Move side.
                 vec![],
                 serialize_values(&vec![
                     MoveValue::Signer(txn_data.sender),
