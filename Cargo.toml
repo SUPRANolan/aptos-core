@@ -621,7 +621,10 @@ sha3 = "0.9.1"
 siphasher = "0.3.10"
 # For more information about why we are pinned to 1.0.152, see this issue:
 # https://github.com/aptos-labs/aptos-core/issues/10424
-serde = { version = "=1.0.152", features = ["derive", "rc"] }
+#
+# Simon: From the ticket, this impacts only test suites, should be safe to unpin this,
+#        otherwise, we need downgrade our other dependencies to 1.0.152.
+serde = { version = "1.0.152", features = ["derive", "rc"] }
 serde_bytes = "0.11.6"
 serde_json = { version = "1.0.81", features = ["preserve_order", "arbitrary_precision"] } # Note: arbitrary_precision is required to parse u256 in JSON
 serde_repr = "0.1"
