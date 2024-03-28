@@ -1589,7 +1589,7 @@ impl TransactionOptions {
     ) -> CliTypedResult<Transaction> {
         let client = self.rest_client()?;
         let (sender_public_key, sender_address) = self.get_public_key_and_address()?;
-
+        eprintln!("SC: {sender_public_key}, {sender_address}");
         // Ask to confirm price if the gas unit price is estimated above the lowest value when
         // it is automatically estimated
         let ask_to_confirm_price;
@@ -1687,6 +1687,7 @@ impl TransactionOptions {
         match self.get_transaction_account_type() {
             Ok(AccountType::Local) => {
                 let (private_key, _) = self.get_key_and_address()?;
+                eprintln!("SS: Local account sign txn: {sender_address}, {private_key}");
                 let sender_account =
                     &mut LocalAccount::new(sender_address, private_key, sequence_number);
                 let transaction = sender_account
