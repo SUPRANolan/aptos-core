@@ -32,6 +32,7 @@ jobs:
 
 
     - name: Move aptos-framework
+      if: contains(steps.changed-files.outputs.all_changed_files, 'aptos-move/framework/aptos-framework')
       run: |
         cd aptos-move/framework/aptos-framework/
         ${{ env.APTOS_BIN }} move compile --dev
