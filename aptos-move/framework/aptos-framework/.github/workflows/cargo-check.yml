@@ -1,0 +1,40 @@
+name: Run Rust compile checks
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BIN: ~/.cargo/bin/cargo
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+  FORGE_BIN: ~/.foundry/bin/forge
+  SUI_BIN: ~/.cargo/bin/sui
+  APTOS_BIN: ~/.local/bin/aptos
+  SCRYPTO_BIN: ~/.cargo/bin/scrypto
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+    strategy:
+      max-parallel: 1
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        clean: false
+
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v42
+
+
+    - name: Move aptos-framework
+      run: |
+        cd aptos-move/framework/aptos-framework/
+        ${{ env.APTOS_BIN }} move compile --dev
+        ${{ env.APTOS_BIN }} move test --dev
+
+   
