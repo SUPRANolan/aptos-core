@@ -1,6 +1,9 @@
 name: Run Rust compile checks
 
 on:
+  push:
+    branches: 
+       - INF-1273-CI-task-for-Aptos-Move
   pull_request:
     branches: [ "master" ]
 
@@ -37,5 +40,5 @@ jobs:
         cd aptos-move/framework/aptos-framework/
         ${{ env.APTOS_BIN }} move compile --dev
         ${{ env.APTOS_BIN }} move test --dev
-
+        ${{ env.APTOS_BIN }} move prover --dev
    
