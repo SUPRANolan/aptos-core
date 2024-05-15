@@ -12,5 +12,7 @@
         "RUST_LOG": "info",
         "CC": "/opt/homebrew/opt/llvm/bin/clang",
         "CXX": "/opt/homebrew/opt/llvm/bin/clang++"
-    }
+    },
+    "todo-tree.filtering.useBuiltInExcludes": "file and search excludes",
+    "todo-tree.tree.filterCaseSensitive": true
 }

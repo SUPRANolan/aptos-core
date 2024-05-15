@@ -213,6 +213,12 @@ impl HashValue {
     }
 
     /// Returns the `index`-th nibble in the bytes.
+    /// MARK: nibble index
+    /// +-------------- Byte 0 -------------++---------- Byte 1 -------------+
+    /// +---+---+---+---+   +---+---+---+---+
+    /// | B7| B6| B5| B4|   | B3| B2| B1| B0|
+    /// +---+---+---+---+   +---+---+---+---+
+    ///   Nibble 0            Nibble 1
     pub fn nibble(&self, index: usize) -> u8 {
         debug_assert!(index < Self::LENGTH * 2); // assumed precondition
         let pos = index / 2;

@@ -21,6 +21,9 @@ create an alternative ledger and redistribute the result to overcome
 unforeseeable catastrophic situations (to hard fork)
 
 More to read:
+
+https://github.com/aptos-labs/aptos-core/tree/0f957599bb4080fdbeacfc3bb3ed2d2a74559a08/documentation
+
 * To understand the authenticated blockchain data structure, see
 https://github.com/aptos-labs/aptos-core/tree/main/documentation/specifications/common
 * To know more about the state authentication data structure, see

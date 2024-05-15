@@ -42,6 +42,7 @@ aptos-types = { workspace = true, features = ["fuzzing"] }
 proptest = { workspace = true }
 proptest-derive = { workspace = true }
 rand = { workspace = true }
+insta = { version = "1.39.0", features = ["redactions", "ron"] }
 
 [features]
 default = []

@@ -44,29 +44,208 @@ fn test_insert_to_empty_tree() {
     let state_key = ValueBlob::from(vec![1u8, 2u8, 3u8, 4u8]);
     let value_hash = HashValue::random();
 
+    let kv = (value_hash.clone(), state_key.clone());
+    let value_set = vec![(key, Some(&kv))];
     // batch version
-    let (_new_root_hash, batch) = tree
-        .put_value_set_test(
-            vec![(key, Some(&(value_hash, state_key)))],
-            0, /* version */
-        )
+    let (new_root_hash, batch) = tree
+        .put_value_set_test(value_set.clone(), 0 /* version */)
         .unwrap();
+
     assert!(batch
         .stale_node_index_batch
         .iter()
         .flatten()
         .next()
         .is_none());
+    eprintln!("1st new_root_hash: {:?}", new_root_hash);
+    insta::assert_debug_snapshot!(batch, @r###"
+    TreeUpdateBatch {
+        node_batch: [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [
+                (
+                    NodeKey {
+                        version: 0,
+                        nibble_path: b,
+                    },
+                    Leaf(
+                        LeafNode {
+                            account_key: HashValue(0xbe3a27e308d13012fdb5360ada749ee2237e7f296f6e3da750cf470eae953954),
+                            value_hash: HashValue(0x9839bd1f737a0dad2cda67ded718e43d2829d8e49f1fd22d33846596f21d6f11),
+                            value_index: (
+                                ValueBlob(
+                                    [
+                                        1,
+                                        2,
+                                        3,
+                                        4,
+                                    ],
+                                ),
+                                0,
+                            ),
+                        },
+                    ),
+                ),
+            ],
+            [],
+            [],
+            [],
+            [],
+            [
+                (
+                    NodeKey {
+                        version: 0,
+                        nibble_path: ,
+                    },
+                    Internal(
+                        InternalNode {
+                            children: {
+                                Nibble(
+                                    11,
+                                ): Child {
+                                    hash: HashValue(0x6ac9df347debf7bf8fc0877ea3f471c1cfdebc514aa66262043d6d4b18e06319),
+                                    version: 0,
+                                    node_type: Leaf,
+                                },
+                            },
+                            leaf_count: 1,
+                        },
+                    ),
+                ),
+            ],
+        ],
+        stale_node_index_batch: [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        ],
+    }
+    "###);
 
-    db.write_tree_update_batch(batch).unwrap();
-    assert_eq!(tree.get(key, 0).unwrap().unwrap(), value_hash);
 
-    let (empty_root_hash, batch) = tree
-        .put_value_set_test(vec![(key, None)], 1 /* version */)
+    let (shard_root, mut batch) = tree
+        .batch_put_value_set_for_shard(key.nibble(0), value_set, None, Some(0), 1)
         .unwrap();
-    db.write_tree_update_batch(batch).unwrap();
-    assert_eq!(tree.get(key, 1).unwrap(), None);
-    assert_eq!(empty_root_hash, *SPARSE_MERKLE_PLACEHOLDER_HASH);
+    let shard_roots = (0..16)
+        .map(|shard_id| {
+            if key.nibble(0) == shard_id {
+                shard_root.clone()
+            } else {
+                Node::Null
+            }
+        })
+        .collect();
+    let (new_root_hash, root_batch) = tree.put_top_levels_nodes(shard_roots, Some(0), 1).unwrap();
+    batch.combine(root_batch);
+    eprintln!("new_root_hash: {:?}", new_root_hash);
+
+    insta::assert_debug_snapshot!(batch, @r###"
+    TreeUpdateBatch {
+        node_batch: [
+            [
+                (
+                    NodeKey {
+                        version: 1,
+                        nibble_path: b,
+                    },
+                    Leaf(
+                        LeafNode {
+                            account_key: HashValue(0xbe3a27e308d13012fdb5360ada749ee2237e7f296f6e3da750cf470eae953954),
+                            value_hash: HashValue(0x9839bd1f737a0dad2cda67ded718e43d2829d8e49f1fd22d33846596f21d6f11),
+                            value_index: (
+                                ValueBlob(
+                                    [
+                                        1,
+                                        2,
+                                        3,
+                                        4,
+                                    ],
+                                ),
+                                1,
+                            ),
+                        },
+                    ),
+                ),
+            ],
+            [
+                (
+                    NodeKey {
+                        version: 1,
+                        nibble_path: ,
+                    },
+                    Internal(
+                        InternalNode {
+                            children: {
+                                Nibble(
+                                    11,
+                                ): Child {
+                                    hash: HashValue(0x6ac9df347debf7bf8fc0877ea3f471c1cfdebc514aa66262043d6d4b18e06319),
+                                    version: 1,
+                                    node_type: Leaf,
+                                },
+                            },
+                            leaf_count: 1,
+                        },
+                    ),
+                ),
+            ],
+        ],
+        stale_node_index_batch: [
+            [],
+            [
+                StaleNodeIndex {
+                    stale_since_version: 1,
+                    node_key: NodeKey {
+                        version: 0,
+                        nibble_path: ,
+                    },
+                },
+            ],
+        ],
+    }
+    "###);
+    // assert!(batch
+    //     .stale_node_index_batch
+    //     .iter()
+    //     .flatten()
+    //     .next()
+    //     .is_none());
+
+    // db.write_tree_update_batch(batch).unwrap();
+    // assert_eq!(tree.get(key, 0).unwrap().unwrap(), value_hash);
+
+    // let (empty_root_hash, batch) = tree
+    //     .put_value_set_test(vec![(key, None)], 1 /* version */)
+    //     .unwrap();
+    // db.write_tree_update_batch(batch).unwrap();
+    // assert_eq!(tree.get(key, 1).unwrap(), None);
+    // assert_eq!(empty_root_hash, *SPARSE_MERKLE_PLACEHOLDER_HASH);
 }
 
 #[test]

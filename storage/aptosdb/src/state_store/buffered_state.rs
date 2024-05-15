@@ -92,6 +92,7 @@ impl BufferedState {
         self.state_after_checkpoint.base_version
     }
 
+    /// MARK: In-memory BufferedState -> snapshot_committer -> state_merkle_batch_committer -> state_merkle_db (DB batch update)
     /// This method checks whether a commit is needed based on the target_items value and the number of items in state_until_checkpoint.
     /// If a commit is needed, it sends a CommitMessage::Data message to the StateSnapshotCommitter thread to commit the data.
     /// If sync_commit is true, it also sends a CommitMessage::Sync message to ensure that the commit is completed before returning.

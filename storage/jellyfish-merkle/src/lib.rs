@@ -358,7 +358,7 @@ where
         &self,
         shard_id: u8,
         value_set: Vec<(HashValue, Option<&(HashValue, K)>)>,
-        node_hashes: Option<&HashMap<NibblePath, HashValue>>,
+        node_hashes: Option<&HashMap<NibblePath, HashValue>>, // MARK: Cache for node hashes, always provided in production.
         persisted_version: Option<Version>,
         version: Version,
     ) -> Result<(Node<K>, TreeUpdateBatch<K>)> {
