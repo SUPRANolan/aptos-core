@@ -4,6 +4,8 @@
 
 #![forbid(unsafe_code)]
 
+use std::sync::Arc;
+
 use aptos_cached_packages::aptos_stdlib;
 use aptos_crypto::{ed25519::Ed25519PrivateKey, HashValue, PrivateKey, Uniform};
 use aptos_db::AptosDB;
@@ -15,7 +17,7 @@ use aptos_executor_test_helpers::{
     bootstrap_genesis, gen_ledger_info_with_sigs, get_test_signed_transaction,
 };
 use aptos_executor_types::BlockExecutorTrait;
-use aptos_storage_interface::{state_view::LatestDbStateCheckpointView, DbReaderWriter};
+use aptos_storage_interface::{state_view::{DbStateViewAtVersion, LatestDbStateCheckpointView}, DbReader, DbReaderWriter};
 use aptos_temppath::TempPath;
 use aptos_types::{
     access_path::AccessPath,
@@ -199,7 +201,17 @@ fn test_new_genesis() {
     // Create bootstrapped DB.
     let tmp_dir = TempPath::new();
     let db = DbReaderWriter::new(AptosDB::new_for_test(&tmp_dir));
+    // MARK: bootstrap with genesis transaction directly, instead of using waypoint to bootstrap
     let waypoint = bootstrap_genesis::<AptosVM>(&db, &genesis_txn).unwrap();
+    // MARK: version 0 is committed to ledger.
+    assert_eq!(0, db.reader.get_latest_version().unwrap());
+    let state_snapshot_0 = db.reader.get_state_snapshot_before(6).unwrap().unwrap();
+    assert_eq!(state_snapshot_0.0, 0);
+    let state_view = db.reader.state_view_at_version(Some(0)).unwrap();
+    let test_validator = genesis.1.get(0).clone().unwrap();
+
+    let account_view = state_view.as_account_with_state_view(&test_validator.data.owner_address);
+    eprintln!("coin store: {:?}", account_view.get_coin_store_resource().unwrap());
     let signer = ValidatorSigner::new(
         genesis.1[0].data.owner_address,
         genesis.1[0].consensus_key.clone(),
@@ -214,6 +226,10 @@ fn test_new_genesis() {
     execute_and_commit(vec![txn1, txn2, txn3, txn4], &db, &signer);
     assert_eq!(get_balance(&account1, &db), 200_000_000);
     assert_eq!(get_balance(&account2, &db), 200_000_000);
+
+    // MARK: The snapshot_committer is run in a thread pool, need to wait until it commits the state to the ledger.
+    let state_snapshot1 = db.reader.get_state_snapshot_before(6).unwrap().unwrap();
+    assert_eq!(state_snapshot1.0, 5);
 
     let trusted_state = TrustedState::from_epoch_waypoint(waypoint);
     let state_proof = db.reader.get_state_proof(trusted_state.version()).unwrap();
@@ -287,13 +303,22 @@ fn test_new_genesis() {
         .is_some());
     assert_eq!(waypoint.version(), 6);
 
+
     // Client bootable from waypoint.
     let trusted_state = TrustedState::from_epoch_waypoint(waypoint);
     let state_proof = db.reader.get_state_proof(trusted_state.version()).unwrap();
     let trusted_state_change = trusted_state.verify_and_ratchet(&state_proof).unwrap();
     assert!(trusted_state_change.is_epoch_change());
     let trusted_state = trusted_state_change.new_state().unwrap();
+
     assert_eq!(trusted_state.version(), 6);
+    // MARK: get previous version, which is 5.
+    let state_snapshot2 = db.reader.get_state_snapshot_before(6).unwrap().unwrap();
+    assert_eq!(state_snapshot1, state_snapshot2);
+    let state_view = db.reader.state_view_at_version(Some(6)).unwrap();
+    let account_view = state_view.as_account_with_state_view(&account2);
+    eprintln!("coin store: {:?}", account_view.get_coin_store_resource().unwrap());
+
 
     // Effect of bootstrapping reflected.
     assert_eq!(get_balance(&account1, &db), 100_000_000);
