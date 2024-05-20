@@ -92,6 +92,7 @@ impl Command {
             println!("Waypoint verified.");
 
             if self.commit {
+                /// MARK: Commit genesis txn to DB. State version is expected to be 0.
                 committer
                     .commit()
                     .with_context(|| format_err!("Committing genesis to DB."))?;

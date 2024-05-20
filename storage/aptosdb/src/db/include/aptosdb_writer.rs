@@ -42,6 +42,7 @@ impl DbWriter for AptosDB {
                 &latest_in_memory_state,
             )?;
 
+            // MARK: Commit ledger and state store
             let new_root_hash = self.calculate_and_commit_ledger_and_state_kv(
                 txns_to_commit,
                 first_version,
@@ -301,6 +302,7 @@ impl AptosDB {
                     .unwrap()
             });
             s.spawn(|_| {
+                // MARK: Commit state_kv and ledger_metadata
                 self.commit_state_kv_and_ledger_metadata(
                     txns_to_commit,
                     first_version,

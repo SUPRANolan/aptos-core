@@ -357,7 +357,7 @@ where
     pub fn batch_put_value_set_for_shard(
         &self,
         shard_id: u8,
-        value_set: Vec<(HashValue, Option<&(HashValue, K)>)>,
+        value_set: Vec<(HashValue, Option<&(HashValue, K)>)>, // MARK: The tuple: ( `HASH(StateKey)`, (`HASH(StateValue)`, `StateKey`) )
         node_hashes: Option<&HashMap<NibblePath, HashValue>>, // MARK: Cache for node hashes, always provided in production.
         persisted_version: Option<Version>,
         version: Version,

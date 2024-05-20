@@ -143,6 +143,12 @@ impl MainnetGenesisInfo {
             DEFAULT_MAX_NUM_NODES_PER_LRU_CACHE_SHARD,
         )?;
         let db_rw = DbReaderWriter::new(aptosdb);
-        aptos_executor::db_bootstrapper::generate_waypoint::<AptosVM>(&db_rw, genesis)
+        let waypoint = aptos_executor::db_bootstrapper::generate_waypoint::<AptosVM>(&db_rw, genesis);
+
+        // MARK: The waypoint is generated, but GenesisCommitter is not committed.
+        //       Look at `maybe_bootstrap` where it call `commit` where persist the ledger data to database.
+
+
+        waypoint
     }
 }

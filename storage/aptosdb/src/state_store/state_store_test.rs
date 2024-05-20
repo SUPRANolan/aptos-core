@@ -120,6 +120,7 @@ fn test_empty_store() {
         .is_err());
 }
 
+/// MARK:  StateStore setup from scratch in test
 #[test]
 fn test_state_store_reader_writer() {
     let tmp_dir = TempPath::new();

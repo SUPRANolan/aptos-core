@@ -159,5 +159,6 @@ impl GenesisInfo {
         )?;
         let db_rw = DbReaderWriter::new(aptosdb);
         aptos_executor::db_bootstrapper::generate_waypoint::<AptosVM>(&db_rw, genesis)
+
     }
 }
