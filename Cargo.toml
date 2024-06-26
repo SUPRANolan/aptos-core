@@ -621,7 +621,6 @@ tracing-subscriber = { version = "0.3.17", features = ["json", "env-filter"] }
 trybuild = "1.0.80"
 tokio = { version = "1.21.0", features = ["full"] }
 tokio-io-timeout = "1.2.0"
-tokio-metrics = "0.1.0"
 tokio-retry = "0.3.0"
 tokio-stream = "0.1.8"
 tokio-test = "0.4.1"
