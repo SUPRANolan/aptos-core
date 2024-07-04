@@ -93,4 +93,24 @@ spec supra_framework::delegation_pool {
         // TODO: verification disabled until this module is specified.
         pragma verify=false;
     }
+
+    spec initialize_delegation_pool {
+        pragma verify = true;
+        include stake::ResourceRequirement;
+        /// No.1 Requirement: Every DelegationPool has only one corresponding StakePool stored at the same address.
+        /// a resource account is created from the "owner" signer to host the delegation pool resource and own the underlying stake pool
+        let owner_address = signer::address_of(owner);
+        let seed = spec_create_resource_account_seed(delegation_pool_creation_seed);
+        let resource_address = account::spec_create_resource_address(owner_address, seed);
+        ensures exists<DelegationPoolOwnership>(owner_address);
+        ensures exists<DelegationPool>(resource_address);
+        // ensures exists<stake::StakePool>(resource_address);
+    }
+
+    spec fun spec_create_resource_account_seed(
+        delegation_pool_creation_seed: vector<u8>,
+    ): vector<u8> {
+        let seed = concat(MODULE_SALT, delegation_pool_creation_seed);
+        seed
+    }
 }
