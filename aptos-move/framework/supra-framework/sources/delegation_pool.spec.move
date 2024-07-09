@@ -173,6 +173,13 @@ spec supra_framework::delegation_pool {
         ensures result == table::spec_get(pool.inactive_shares, pool.observed_lockup_cycle);
     }
 
+    spec olc_with_index {
+        pragma verify = true;
+        pragma opaque;
+        /// ensure the result is equal to the observed lockup cycle with the given index
+        ensures result == ObservedLockupCycle{index};
+    }
+
     spec coins_to_transfer_to_ensure_min_stake {
 
     }
