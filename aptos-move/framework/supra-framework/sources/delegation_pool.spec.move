@@ -110,6 +110,18 @@ spec supra_framework::delegation_pool {
         // ensures TRACE(signer_address) == TRACE(pool_address_in_owner);
     }
 
+    spec get_used_voting_power {
+        pragma verify = true;
+        pragma opaque;
+        let votes = governance_records.votes;
+        let key = VotingRecordKey {
+            voter,
+            proposal_id,
+        };
+        ensures smart_table::spec_contains(votes, key) ==> result == smart_table::spec_get(votes, key)
+        && (!smart_table::spec_contains(votes, key)) ==> result == 0;
+    }
+
     spec create_resource_account_seed {
         pragma verify = true;
         ensures result == spec_create_resource_account_seed(delegation_pool_creation_seed);
@@ -148,6 +160,10 @@ spec supra_framework::delegation_pool {
     }
 
     spec coins_to_transfer_to_ensure_min_stake {
+
+    }
+
+    spec update_governanace_records_for_redeem_pending_inactive_shares {
 
     }
 }
