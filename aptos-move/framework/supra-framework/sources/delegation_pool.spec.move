@@ -139,14 +139,16 @@ spec supra_framework::delegation_pool {
     }
 
     spec amount_to_shares_to_redeem {
-        /// return pool_u64::shares(shares_pool, shareholder) if coins_amount >= pool_u64::balance(shares_pool, shareholder)
-        /// else return pool_u64::amount_to_shares(shares_pool, coins_amount)
         pragma verify = true;
-        // pragma opaque;
-        // ensures coins_amount >= pool_u64::balance(shares_pool, shareholder) ==>
-        //     result == pool_u64::shares(shares_pool, shareholder);
-        // ensures coins_amount < pool_u64::balance(shares_pool, shareholder) ==>
-        //     result == pool_u64::amount_to_shares(shares_pool, coins_amount);
+        pragma opaque;
+        let num_shares = pool_u64::spec_shares(shares_pool, shareholder);
+        let total_coins = shares_pool.total_coins;
+        let balance = pool_u64::spec_shares_to_amount_with_total_coins(shares_pool, num_shares, total_coins);
+        let amount_to_share = pool_u64::spec_amount_to_shares_with_total_coins(shares_pool, coins_amount, total_coins);
+        /// ensures result is pool_u64::shares(shares_pool, shareholder) if coins_amount >= pool_u64::balance(shares_pool, shareholder)
+        /// else pool_u64::amount_to_shares(shares_pool, coins_amount)
+        ensures coins_amount >= balance ==> result == num_shares
+                && coins_amount < balance ==> result == amount_to_share;
     }
 
     spec coins_to_redeem_to_ensure_min_stake {
