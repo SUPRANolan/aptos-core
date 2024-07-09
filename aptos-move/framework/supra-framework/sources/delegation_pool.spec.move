@@ -97,14 +97,22 @@ spec supra_framework::delegation_pool {
     spec initialize_delegation_pool {
         pragma verify = true;
         include stake::ResourceRequirement;
-        /// No.1 Requirement: Every DelegationPool has only one corresponding StakePool stored at the same address.
-        /// a resource account is created from the "owner" signer to host the delegation pool resource and own the underlying stake pool
+        /// [high-level-req-1]
         let owner_address = signer::address_of(owner);
         let seed = spec_create_resource_account_seed(delegation_pool_creation_seed);
         let resource_address = account::spec_create_resource_address(owner_address, seed);
-        ensures exists<DelegationPoolOwnership>(owner_address);
-        ensures exists<DelegationPool>(resource_address);
-        // ensures exists<stake::StakePool>(resource_address);
+        ensures exists<DelegationPoolOwnership>(TRACE(owner_address));
+        // ensures exists<DelegationPool>(resource_address);
+        // ensures exists<stake::StakePool>(TRACE(resource_address));
+        /// [high-level-req-2]
+        let signer_address = global<DelegationPool>(resource_address).stake_pool_signer_cap.account;
+        let pool_address_in_owner = global<DelegationPoolOwnership>(TRACE(owner_address)).pool_address;
+        // ensures TRACE(signer_address) == TRACE(pool_address_in_owner);
+    }
+
+    spec create_resource_account_seed {
+        pragma verify = true;
+        ensures result == spec_create_resource_account_seed(delegation_pool_creation_seed);
     }
 
     spec fun spec_create_resource_account_seed(
@@ -112,5 +120,34 @@ spec supra_framework::delegation_pool {
     ): vector<u8> {
         let seed = concat(MODULE_SALT, delegation_pool_creation_seed);
         seed
+    }
+
+    spec enable_partial_governance_voting {
+        let delegation_pool = borrow_global<DelegationPool>(pool_address);
+    }
+
+    spec amount_to_shares_to_redeem {
+        /// return pool_u64::shares(shares_pool, shareholder) if coins_amount >= pool_u64::balance(shares_pool, shareholder)
+        /// else return pool_u64::amount_to_shares(shares_pool, coins_amount)
+        pragma verify = true;
+        // pragma opaque;
+        // ensures coins_amount >= pool_u64::balance(shares_pool, shareholder) ==>
+        //     result == pool_u64::shares(shares_pool, shareholder);
+        // ensures coins_amount < pool_u64::balance(shares_pool, shareholder) ==>
+        //     result == pool_u64::amount_to_shares(shares_pool, coins_amount);
+    }
+
+    spec coins_to_redeem_to_ensure_min_stake {
+        pragma verify = true;
+        // let src_balance = pool_u64::balance(src_shares_pool, shareholder);
+        // let redeemed_coins = pool_u64::shares_to_amount(
+        //     src_shares_pool,
+        //     amount_to_shares_to_redeem(src_shares_pool, shareholder, amount)
+        // );
+        // ensures src_balance - redeemed_coins < MIN_COINS_ON_SHARES_POOL ==> result == src_balance;
+    }
+
+    spec coins_to_transfer_to_ensure_min_stake {
+
     }
 }
