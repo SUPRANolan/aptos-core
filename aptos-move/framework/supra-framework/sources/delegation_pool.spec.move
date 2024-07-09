@@ -159,6 +159,13 @@ spec supra_framework::delegation_pool {
         // ensures src_balance - redeemed_coins < MIN_COINS_ON_SHARES_POOL ==> result == src_balance;
     }
 
+    spec pending_inactive_shares_pool_mut {
+        pragma verify = true;
+        pragma opaque;
+        /// ensure the result is equal to the pending_inactive_shares_pool of the pool in the current lockup cycle
+        ensures result == table::spec_get(pool.inactive_shares, pool.observed_lockup_cycle);
+    }
+
     spec pending_inactive_shares_pool {
         pragma verify = true;
         pragma opaque;
