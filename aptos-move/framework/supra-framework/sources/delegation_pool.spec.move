@@ -124,6 +124,7 @@ spec supra_framework::delegation_pool {
 
     spec create_resource_account_seed {
         pragma verify = true;
+        pragma opaque;
         ensures result == spec_create_resource_account_seed(delegation_pool_creation_seed);
     }
 
