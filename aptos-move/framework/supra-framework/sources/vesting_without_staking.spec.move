@@ -71,7 +71,7 @@ spec supra_framework::vesting_without_staking {
     // }
 
     spec vest {
-        pragma verify = true;
+        pragma verify = false;
         pragma aborts_if_is_partial = true;
         include VestingContractActive;
         let vesting_contract_pre = global<VestingContract>(contract_address);
@@ -86,6 +86,34 @@ spec supra_framework::vesting_without_staking {
         // ensure the vesting contract is the same if the last completed period is greater than the next period to vest
         ensures last_completed_period < next_period_to_vest ==> vesting_contract_pre == vesting_contract_post;
         // ensures last_completed_period > next_period_to_vest ==> TRACE(vesting_contract_post.vesting_schedule.last_vested_period) == TRACE(next_period_to_vest);
+    }
+
+    spec vest_individual {
+        pragma verify = true;
+        pragma aborts_if_is_partial = true;
+        include VestingContractActive;
+        let vesting_contract_pre = global<VestingContract>(contract_address);
+        let post vesting_contract_post = global<VestingContract>(contract_address);
+        let vesting_schedule = vesting_contract_pre.vesting_schedule;
+        let last_vested_period = vesting_schedule.last_vested_period;
+        let next_period_to_vest = last_vested_period + 1;
+        let last_completed_period =
+            (timestamp::spec_now_seconds() - vesting_schedule.start_timestamp_secs) / vesting_schedule.period_duration;
+        let post post_balance = coin::balance<SupraCoin>(contract_address);
+        // ensure the vesting contract is the same if the vesting period is not reached
+        ensures vesting_contract_pre.vesting_schedule.start_timestamp_secs > timestamp::spec_now_seconds() ==> vesting_contract_pre == vesting_contract_post;
+        // ensure the vesting contract is the same if the last completed period is greater than the next period to vest
+        ensures (last_completed_period < next_period_to_vest && post_balance > 0) ==> vesting_contract_pre == vesting_contract_post;
+        // ensure the vesting contract is terminated if the post_balance is 0
+        ensures post_balance == 0 ==> vesting_contract_pre.state == VESTING_POOL_ACTIVE && TRACE(vesting_contract_post).state == VESTING_POOL_TERMINATED;
+    }
+
+    spec vest_transfer {
+        pragma verify = true;
+        let vesting_contract_pre = global<VestingContract>(contract_address);
+        let post vesting_contract_post = global<VestingContract>(contract_address);
+        // ensures the state of the vesting contract is the same after the transfer
+        ensures vesting_contract_pre.state == vesting_contract_post.state;
     }
 
     // spec distribute {
