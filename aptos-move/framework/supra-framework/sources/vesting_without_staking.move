@@ -390,23 +390,23 @@ module supra_framework::vesting_without_staking {
 		//check if contract exist, active and shareholder is a member of the contract
 		assert_shareholder_exists(contract_address,shareholder_address);
 
-    let vesting_contract = borrow_global<VestingContract>(contract_address);
-    // Short-circuit if vesting hasn't started yet.
-    if (vesting_contract.vesting_schedule.start_timestamp_secs > timestamp::now_seconds()) {
-        return
-    };
+        let vesting_contract = borrow_global<VestingContract>(contract_address);
+        // Short-circuit if vesting hasn't started yet.
+        if (vesting_contract.vesting_schedule.start_timestamp_secs > timestamp::now_seconds()) {
+            return
+        };
 
-    let vesting_record = simple_map::borrow(&vesting_contract.shareholders,&shareholder_address);
+        let vesting_record = simple_map::borrow(&vesting_contract.shareholders,&shareholder_address);
 
-    // Check if the next vested period has already passed. If not, short-circuit since there's nothing to vest.
-    let vesting_schedule = vesting_contract.vesting_schedule;
-    let last_vested_period = vesting_record.last_vested_period;
-    let next_period_to_vest = last_vested_period + 1;
-    let last_completed_period =
-        (timestamp::now_seconds() - vesting_schedule.start_timestamp_secs) / vesting_schedule.period_duration;
-    while(last_completed_period>=next_period_to_vest) {
-        vest_transfer(&mut next_period_to_vest, contract_address, shareholder_address);
-    };
+        // Check if the next vested period has already passed. If not, short-circuit since there's nothing to vest.
+        let vesting_schedule = vesting_contract.vesting_schedule;
+        let last_vested_period = vesting_record.last_vested_period;
+        let next_period_to_vest = last_vested_period + 1;
+        let last_completed_period =
+            (timestamp::now_seconds() - vesting_schedule.start_timestamp_secs) / vesting_schedule.period_duration;
+        while(last_completed_period>=next_period_to_vest) {
+            vest_transfer(&mut next_period_to_vest, contract_address, shareholder_address);
+        };
 	}
 
     fun vest_transfer(next_period_to_vest: &mut u64, contract_address: address,
