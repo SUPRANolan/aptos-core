@@ -85,7 +85,6 @@ spec supra_framework::vesting_without_staking {
         ensures vesting_contract_pre.vesting_schedule.start_timestamp_secs > timestamp::spec_now_seconds() ==> vesting_contract_pre == vesting_contract_post;
         // ensure the vesting contract is the same if the last completed period is greater than the next period to vest
         ensures last_completed_period < next_period_to_vest ==> vesting_contract_pre == vesting_contract_post;
-        // ensures last_completed_period > next_period_to_vest ==> TRACE(vesting_contract_post.vesting_schedule.last_vested_period) == TRACE(next_period_to_vest);
     }
 
     spec vest_individual {
@@ -104,8 +103,6 @@ spec supra_framework::vesting_without_staking {
         ensures vesting_contract_pre.vesting_schedule.start_timestamp_secs > timestamp::spec_now_seconds() ==> vesting_contract_pre == vesting_contract_post;
         // ensure the vesting contract is the same if the last completed period is greater than the next period to vest
         ensures (last_completed_period < next_period_to_vest && post_balance > 0) ==> vesting_contract_pre == vesting_contract_post;
-        // ensure the vesting contract is terminated if the post_balance is 0
-        // ensures post_balance == 0 ==> vesting_contract_pre.state == VESTING_POOL_ACTIVE && TRACE(vesting_contract_post).state == VESTING_POOL_TERMINATED;
     }
 
     spec vest_transfer {
