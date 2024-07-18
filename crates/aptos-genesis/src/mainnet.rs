@@ -122,7 +122,6 @@ impl MainnetGenesisInfo {
     fn generate_genesis_txn(&self) -> Transaction {
         aptos_vm_genesis::encode_aptos_mainnet_genesis_transaction(
             &self.accounts,
-            &self.employee_vesting_accounts,
             &self.validators,
             &self.framework,
             self.chain_id,
