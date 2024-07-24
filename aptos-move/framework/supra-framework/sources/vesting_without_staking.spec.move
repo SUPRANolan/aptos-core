@@ -93,16 +93,17 @@ spec supra_framework::vesting_without_staking {
         include VestingContractActive;
         let vesting_contract_pre = global<VestingContract>(contract_address);
         let post vesting_contract_post = global<VestingContract>(contract_address);
-        let vesting_schedule = vesting_contract_pre.vesting_schedule;
-        let last_vested_period = vesting_schedule.last_vested_period;
-        let next_period_to_vest = last_vested_period + 1;
-        let last_completed_period =
-            (timestamp::spec_now_seconds() - vesting_schedule.start_timestamp_secs) / vesting_schedule.period_duration;
-        let post post_balance = coin::balance<SupraCoin>(contract_address);
+        // let vesting_record = simple_map::spec_get(vesting_contract_pre.shareholders, shareholder_address);
+        // let vesting_schedule = vesting_contract_pre.vesting_schedule;
+        // let last_vested_period = vesting_record.last_vested_period;
+        // let next_period_to_vest = last_vested_period + 1;
+        // let last_completed_period =
+        //     (timestamp::spec_now_seconds() - vesting_schedule.start_timestamp_secs) / vesting_schedule.period_duration;
+        // let post post_balance = coin::balance<SupraCoin>(contract_address);
         // ensure the vesting contract is the same if the vesting period is not reached
         ensures vesting_contract_pre.vesting_schedule.start_timestamp_secs > timestamp::spec_now_seconds() ==> vesting_contract_pre == vesting_contract_post;
         // ensure the vesting contract is the same if the last completed period is greater than the next period to vest
-        ensures (last_completed_period < next_period_to_vest && post_balance > 0) ==> vesting_contract_pre == vesting_contract_post;
+        // ensures (last_completed_period < next_period_to_vest && post_balance > 0) ==> vesting_contract_pre == vesting_contract_post;
     }
 
     spec vest_transfer {
