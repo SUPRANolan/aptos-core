@@ -107,37 +107,14 @@ spec supra_framework::vesting_without_staking {
 
     spec vest_transfer {
         pragma verify = true;
-        let vesting_contract_pre = global<VestingContract>(contract_address);
-        let post vesting_contract_post = global<VestingContract>(contract_address);
-        // ensures the state of the vesting contract is the same after the transfer
-        ensures vesting_contract_pre.state == vesting_contract_post.state;
-        let shareholder_record = simple_map::spec_get(vesting_contract_pre.shareholders, shareholder_address);
-        // Check if the next vested period has already passed. If not, short-circuit since there's nothing to vest.
-        let vesting_schedule = vesting_contract_pre.vesting_schedule;
-        let schedule = vesting_schedule.schedule;
-        let schedule_index = next_period_to_vest - 1;
-        let vesting_fraction = if (schedule_index < vector::length(schedule)) {
-            schedule[schedule_index]
-        } else {
-            // Last vesting schedule fraction will repeat until the grant runs out.
-            schedule[vector::length(schedule) - 1]
-        };
-        let amount = min(shareholder_record.left_amount, fixed_point32::spec_multiply_u64(shareholder_record.init_amount, vesting_fraction));
-        let shareholder_amount = simple_map::spec_get(vesting_contract_pre.shareholders, shareholder_address);
-        let post shareholder_amount_post = simple_map::spec_get(vesting_contract_post.shareholders, shareholder_address);
-        let address_from = global<VestingContract>(contract_address).signer_cap.account;
-        let address_to_beneficiary = simple_map::spec_get(vesting_contract_pre.beneficiaries, shareholder_address);
-        let flag = simple_map::spec_contains_key(vesting_contract_pre.beneficiaries, shareholder_address);
-        // Ensure that the amount is transferred to the beneficiary and the amount is substract from left_amount if the beneficiary exists
-        ensures (flag && address_from != address_to_beneficiary)
-            ==> (coin::balance<SupraCoin>(address_to_beneficiary) == old(coin::balance<SupraCoin>(address_to_beneficiary)) + amount
-            && coin::balance<SupraCoin>(address_from) == old(coin::balance<SupraCoin>(address_from)) - amount
-            && shareholder_amount_post.left_amount == shareholder_amount.left_amount - amount);
-        // Ensure that the amount is transferred to the shareholder and the amount is substract from left_amount if the beneficiary doesn't exist
-        ensures (!flag && address_from != shareholder_address)
-            ==> (coin::balance<SupraCoin>(shareholder_address) == old(coin::balance<SupraCoin>(shareholder_address)) + amount
-            && coin::balance<SupraCoin>(address_from) == old(coin::balance<SupraCoin>(address_from)) - amount
-            && shareholder_amount_post.left_amount == shareholder_amount.left_amount - amount);
+        let amount = min(vesting_record.left_amount, fixed_point32::spec_multiply_u64(vesting_record.init_amount, vesting_fraction));
+        // Ensure that the amount is substracted from the left_amount
+        ensures vesting_record.left_amount == old(vesting_record.left_amount) - amount;
+        let address_from = signer_cap.account;
+        // Ensure that the amount is transferred from the address_from to the beneficiary
+        ensures beneficiary != address_from ==>
+            (coin::balance<SupraCoin>(beneficiary) == old(coin::balance<SupraCoin>(beneficiary)) + amount
+            && coin::balance<SupraCoin>(address_from) == old(coin::balance<SupraCoin>(address_from)) - amount);
     }
 
     spec remove_shareholder {
