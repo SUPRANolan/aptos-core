@@ -233,7 +233,7 @@ module supra_framework::pbo_delegation_pool {
     /// be worth a lot if current share price is high).
     /// This constraint is not enforced on inactive pools as they only allow redeems
     /// (can lose at most 1 coin regardless of current share price).
-    const MIN_COINS_ON_SHARES_POOL: u64 = 1000000000;
+    const MIN_COINS_ON_SHARES_POOL: u64 = 100000000;
 
     /// Scaling factor of shares pools used within the delegation pool
     const SHARES_SCALING_FACTOR: u64 = 10000000000000000;
