@@ -16,7 +16,7 @@ module supra_framework::vesting_without_staking {
     use supra_framework::aptos_account::{assert_account_is_registered_for_apt};
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::coin::{Self, Coin};
-    use supra_framework::event::{EventHandle, emit_event};
+    use supra_framework::event::{EventHandle, emit};
     use supra_framework::system_addresses;
     use supra_framework::timestamp;
 
@@ -124,12 +124,14 @@ module supra_framework::vesting_without_staking {
         create_events: EventHandle<CreateVestingContractEvent>,
     }
 
+	#[event]
     struct CreateVestingContractEvent has drop, store {
         grant_amount: u64,
         withdrawal_address: address,
         vesting_contract_address: address,
     }
 
+	#[event]
     struct SetBeneficiaryEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -138,6 +140,7 @@ module supra_framework::vesting_without_staking {
         new_beneficiary: address,
     }
 
+	#[event]
     struct VestEvent has drop, store {
 		admin: address,
         shareholder_address: address,
@@ -145,17 +148,20 @@ module supra_framework::vesting_without_staking {
         period_vested: u64,
     }
 
+	#[event]
     struct TerminateEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
     }
 
+	#[event]
     struct AdminWithdrawEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
         amount: u64,
     }
 
+	#[event]
     struct ShareHolderRemovedEvent has drop, store {
         shareholder: address,
         beneficiary: Option<address>,
@@ -337,8 +343,7 @@ module supra_framework::vesting_without_staking {
 
         let admin_store = borrow_global_mut<AdminStore>(admin_address);
         vector::push_back(&mut admin_store.vesting_contracts, contract_signer_address);
-        emit_event(
-            &mut admin_store.create_events,
+        emit(
             CreateVestingContractEvent {
                 withdrawal_address,
                 grant_amount,
@@ -427,8 +432,7 @@ module supra_framework::vesting_without_staking {
                 //update left_amount for the shareholder
                 vesting_record.left_amount = vesting_record.left_amount - amount;
                 coin::transfer<SupraCoin>(&vesting_signer, beneficiary, amount);
-                emit_event(
-                    &mut vesting_contract.vest_events,
+                emit(
                     VestEvent {
                         admin: vesting_contract.admin,
                         shareholder_address: shareholder_address,
@@ -453,8 +457,7 @@ module supra_framework::vesting_without_staking {
         let vesting_signer = get_vesting_account_signer_internal(vesting_contract);
         let shareholder_amount = simple_map::borrow(&vesting_contract.shareholders, &shareholder_address).left_amount;
         coin::transfer<SupraCoin>(&vesting_signer, vesting_contract.withdrawal_address, shareholder_amount);
-        emit_event(
-            &mut vesting_contract.admin_withdraw_events,
+        emit(
             AdminWithdrawEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -476,8 +479,7 @@ module supra_framework::vesting_without_staking {
         };
 
         // Emit ShareHolderRemovedEvent
-        emit_event(
-            &mut vesting_contract.shareholder_removed_events,
+        emit(
             ShareHolderRemovedEvent {
                 shareholder: shareholder_address,
                 beneficiary,
@@ -516,8 +518,7 @@ module supra_framework::vesting_without_staking {
         let vesting_signer  = get_vesting_account_signer_internal(vesting_contract);
         coin::transfer<SupraCoin>(&vesting_signer, vesting_contract.withdrawal_address, total_balance);
 
-        emit_event(
-            &mut vesting_contract.admin_withdraw_events,
+        emit(
             AdminWithdrawEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -543,8 +544,7 @@ module supra_framework::vesting_without_staking {
         let beneficiaries = &mut vesting_contract.beneficiaries;
         simple_map::upsert(beneficiaries, shareholder, new_beneficiary);
 
-        emit_event(
-            &mut vesting_contract.set_beneficiary_events,
+        emit(
             SetBeneficiaryEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -674,8 +674,7 @@ module supra_framework::vesting_without_staking {
     fun set_terminate_vesting_contract(contract_address: address) acquires VestingContract {
         let vesting_contract = borrow_global_mut<VestingContract>(contract_address);
         vesting_contract.state = VESTING_POOL_TERMINATED;
-        emit_event(
-            &mut vesting_contract.terminate_events,
+        emit(
             TerminateEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,

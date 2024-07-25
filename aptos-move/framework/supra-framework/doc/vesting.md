@@ -462,7 +462,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_CreateVestingContractEvent">CreateVestingContractEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_CreateVestingContractEvent">CreateVestingContractEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -525,7 +526,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_UpdateOperatorEvent">UpdateOperatorEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_UpdateOperatorEvent">UpdateOperatorEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -582,7 +584,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_UpdateVoterEvent">UpdateVoterEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_UpdateVoterEvent">UpdateVoterEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -633,7 +636,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_ResetLockupEvent">ResetLockupEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_ResetLockupEvent">ResetLockupEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -678,7 +682,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_SetBeneficiaryEvent">SetBeneficiaryEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_SetBeneficiaryEvent">SetBeneficiaryEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -729,7 +734,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_UnlockRewardsEvent">UnlockRewardsEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_UnlockRewardsEvent">UnlockRewardsEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -774,7 +780,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_VestEvent">VestEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_VestEvent">VestEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -825,7 +832,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_DistributeEvent">DistributeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_DistributeEvent">DistributeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -864,7 +872,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_TerminateEvent">TerminateEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_TerminateEvent">TerminateEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -897,7 +906,8 @@ withdrawable, admin can call admin_withdraw to withdraw all funds to the vesting
 
 
 
-<pre><code><b>struct</b> <a href="vesting.md#0x1_vesting_AdminWithdrawEvent">AdminWithdrawEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting.md#0x1_vesting_AdminWithdrawEvent">AdminWithdrawEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -1713,8 +1723,7 @@ Create a vesting contract with a given configurations.
     <b>let</b> contract_address = <a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer_address_of">signer::address_of</a>(&contract_signer);
     <b>let</b> admin_store = <b>borrow_global_mut</b>&lt;<a href="vesting.md#0x1_vesting_AdminStore">AdminStore</a>&gt;(admin_address);
     <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> admin_store.vesting_contracts, contract_address);
-    emit_event(
-        &<b>mut</b> admin_store.create_events,
+    emit(
         <a href="vesting.md#0x1_vesting_CreateVestingContractEvent">CreateVestingContractEvent</a> {
             operator,
             voter,
@@ -1871,8 +1880,7 @@ Unlock any vested portion of the grant.
     vesting_schedule.last_vested_period = next_period_to_vest;
     <a href="vesting.md#0x1_vesting_unlock_stake">unlock_stake</a>(vesting_contract, vested_amount);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.vest_events,
+    emit(
         <a href="vesting.md#0x1_vesting_VestEvent">VestEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -1966,8 +1974,7 @@ Distribute any withdrawable stake from the stake pool.
         <a href="coin.md#0x1_coin_destroy_zero">coin::destroy_zero</a>(coins);
     };
 
-    emit_event(
-        &<b>mut</b> vesting_contract.distribute_events,
+    emit(
         <a href="vesting.md#0x1_vesting_DistributeEvent">DistributeEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2045,8 +2052,7 @@ Terminate the vesting contract and send all funds back to the withdrawal address
     vesting_contract.remaining_grant = 0;
     <a href="vesting.md#0x1_vesting_unlock_stake">unlock_stake</a>(vesting_contract, active_stake);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.terminate_events,
+    emit(
         <a href="vesting.md#0x1_vesting_TerminateEvent">TerminateEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2090,8 +2096,7 @@ has already been terminated.
     };
     <a href="aptos_account.md#0x1_aptos_account_deposit_coins">aptos_account::deposit_coins</a>(vesting_contract.withdrawal_address, coins);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.admin_withdraw_events,
+    emit(
         <a href="vesting.md#0x1_vesting_AdminWithdrawEvent">AdminWithdrawEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2134,8 +2139,7 @@ has already been terminated.
     vesting_contract.staking.operator = new_operator;
     vesting_contract.staking.commission_percentage = commission_percentage;
 
-    emit_event(
-        &<b>mut</b> vesting_contract.update_operator_events,
+    emit(
         <a href="vesting.md#0x1_vesting_UpdateOperatorEvent">UpdateOperatorEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2243,8 +2247,7 @@ has already been terminated.
     <a href="staking_contract.md#0x1_staking_contract_update_voter">staking_contract::update_voter</a>(contract_signer, vesting_contract.staking.operator, new_voter);
     vesting_contract.staking.voter = new_voter;
 
-    emit_event(
-        &<b>mut</b> vesting_contract.update_voter_events,
+    emit(
         <a href="vesting.md#0x1_vesting_UpdateVoterEvent">UpdateVoterEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2284,8 +2287,7 @@ has already been terminated.
     <b>let</b> contract_signer = &<a href="vesting.md#0x1_vesting_get_vesting_account_signer_internal">get_vesting_account_signer_internal</a>(vesting_contract);
     <a href="staking_contract.md#0x1_staking_contract_reset_lockup">staking_contract::reset_lockup</a>(contract_signer, vesting_contract.staking.operator);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.reset_lockup_events,
+    emit(
         <a href="vesting.md#0x1_vesting_ResetLockupEvent">ResetLockupEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -2337,8 +2339,7 @@ has already been terminated.
         <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_add">simple_map::add</a>(beneficiaries, shareholder, new_beneficiary);
     };
 
-    emit_event(
-        &<b>mut</b> vesting_contract.set_beneficiary_events,
+    emit(
         <a href="vesting.md#0x1_vesting_SetBeneficiaryEvent">SetBeneficiaryEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,

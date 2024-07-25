@@ -3,7 +3,7 @@ module supra_framework::aptos_account {
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::coin::{Self, Coin};
     use supra_framework::create_signer::create_signer;
-    use supra_framework::event::{EventHandle, emit_event};
+    use supra_framework::event::{EventHandle,emit};
     use std::error;
     use std::signer;
     use std::vector;
@@ -30,6 +30,7 @@ module supra_framework::aptos_account {
         update_coin_transfer_events: EventHandle<DirectCoinTransferConfigUpdatedEvent>,
     }
 
+	#[event]
     /// Event emitted when an account's direct coins transfer config is updated.
     struct DirectCoinTransferConfigUpdatedEvent has drop, store {
         new_allow_direct_transfers: bool,
@@ -134,16 +135,14 @@ module supra_framework::aptos_account {
             };
 
             direct_transfer_config.allow_arbitrary_coin_transfers = allow;
-            emit_event(
-                &mut direct_transfer_config.update_coin_transfer_events,
+            emit(
                 DirectCoinTransferConfigUpdatedEvent { new_allow_direct_transfers: allow });
         } else {
             let direct_transfer_config = DirectTransferConfig {
                 allow_arbitrary_coin_transfers: allow,
                 update_coin_transfer_events: new_event_handle<DirectCoinTransferConfigUpdatedEvent>(account),
             };
-            emit_event(
-                &mut direct_transfer_config.update_coin_transfer_events,
+            emit(
                 DirectCoinTransferConfigUpdatedEvent { new_allow_direct_transfers: allow });
             move_to(account, direct_transfer_config);
         };

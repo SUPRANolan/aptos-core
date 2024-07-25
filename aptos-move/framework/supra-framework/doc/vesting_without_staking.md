@@ -344,7 +344,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_CreateVestingContractEvent">CreateVestingContractEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_CreateVestingContractEvent">CreateVestingContractEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -383,7 +384,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_SetBeneficiaryEvent">SetBeneficiaryEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_SetBeneficiaryEvent">SetBeneficiaryEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -434,7 +436,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestEvent">VestEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestEvent">VestEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -479,7 +482,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_TerminateEvent">TerminateEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_TerminateEvent">TerminateEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -512,7 +516,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminWithdrawEvent">AdminWithdrawEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminWithdrawEvent">AdminWithdrawEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -551,7 +556,8 @@ Vesting without staking contract
 
 
 
-<pre><code><b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_ShareHolderRemovedEvent">ShareHolderRemovedEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_ShareHolderRemovedEvent">ShareHolderRemovedEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -1169,8 +1175,7 @@ Create a vesting contract with a given configurations.
 
     <b>let</b> admin_store = <b>borrow_global_mut</b>&lt;<a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminStore">AdminStore</a>&gt;(admin_address);
     <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> admin_store.vesting_contracts, contract_signer_address);
-    emit_event(
-        &<b>mut</b> admin_store.create_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_CreateVestingContractEvent">CreateVestingContractEvent</a> {
             withdrawal_address,
             grant_amount,
@@ -1299,8 +1304,7 @@ Unlock any vested portion of the grant.
                //<b>update</b> left_amount for the shareholder
                vesting_record.left_amount = vesting_record.left_amount - amount;
                <a href="coin.md#0x1_coin_transfer">coin::transfer</a>&lt;SupraCoin&gt;(&vesting_signer, beneficiary, amount);
-               emit_event(
-                   &<b>mut</b> vesting_contract.vest_events,
+               emit(
                    <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestEvent">VestEvent</a> {
                        admin: vesting_contract.admin,
                        shareholder_address: shareholder_address,
@@ -1345,8 +1349,7 @@ Example usage: If admin find shareholder suspicious, admin can remove it.
     <b>let</b> vesting_signer = <a href="vesting_without_staking.md#0x1_vesting_without_staking_get_vesting_account_signer_internal">get_vesting_account_signer_internal</a>(vesting_contract);
     <b>let</b> shareholder_amount = <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_borrow">simple_map::borrow</a>(&vesting_contract.shareholders, &shareholder_address).left_amount;
     <a href="coin.md#0x1_coin_transfer">coin::transfer</a>&lt;SupraCoin&gt;(&vesting_signer, vesting_contract.withdrawal_address, shareholder_amount);
-    emit_event(
-        &<b>mut</b> vesting_contract.admin_withdraw_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminWithdrawEvent">AdminWithdrawEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -1368,8 +1371,7 @@ Example usage: If admin find shareholder suspicious, admin can remove it.
     };
 
     // Emit <a href="vesting_without_staking.md#0x1_vesting_without_staking_ShareHolderRemovedEvent">ShareHolderRemovedEvent</a>
-    emit_event(
-        &<b>mut</b> vesting_contract.shareholder_removed_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_ShareHolderRemovedEvent">ShareHolderRemovedEvent</a> {
             shareholder: shareholder_address,
             beneficiary,
@@ -1448,8 +1450,7 @@ has already been terminated.
     <b>let</b> vesting_signer  = <a href="vesting_without_staking.md#0x1_vesting_without_staking_get_vesting_account_signer_internal">get_vesting_account_signer_internal</a>(vesting_contract);
     <a href="coin.md#0x1_coin_transfer">coin::transfer</a>&lt;SupraCoin&gt;(&vesting_signer, vesting_contract.withdrawal_address, total_balance);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.admin_withdraw_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminWithdrawEvent">AdminWithdrawEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -1495,8 +1496,7 @@ has already been terminated.
     <b>let</b> beneficiaries = &<b>mut</b> vesting_contract.beneficiaries;
     <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_upsert">simple_map::upsert</a>(beneficiaries, shareholder, new_beneficiary);
 
-    emit_event(
-        &<b>mut</b> vesting_contract.set_beneficiary_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_SetBeneficiaryEvent">SetBeneficiaryEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,
@@ -1886,8 +1886,7 @@ This address should be deterministic for the same admin and vesting contract cre
 <pre><code><b>fun</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_set_terminate_vesting_contract">set_terminate_vesting_contract</a>(contract_address: <b>address</b>) <b>acquires</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestingContract">VestingContract</a> {
     <b>let</b> vesting_contract = <b>borrow_global_mut</b>&lt;<a href="vesting_without_staking.md#0x1_vesting_without_staking_VestingContract">VestingContract</a>&gt;(contract_address);
     vesting_contract.state = <a href="vesting_without_staking.md#0x1_vesting_without_staking_VESTING_POOL_TERMINATED">VESTING_POOL_TERMINATED</a>;
-    emit_event(
-        &<b>mut</b> vesting_contract.terminate_events,
+    emit(
         <a href="vesting_without_staking.md#0x1_vesting_without_staking_TerminateEvent">TerminateEvent</a> {
             admin: vesting_contract.admin,
             vesting_contract_address: contract_address,

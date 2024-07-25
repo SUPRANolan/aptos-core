@@ -38,7 +38,7 @@ module supra_framework::staking_contract {
     use supra_framework::aptos_account;
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::coin::{Self, Coin};
-    use supra_framework::event::{EventHandle, emit, emit_event};
+    use supra_framework::event::{EventHandle, emit};
     use supra_framework::stake::{Self, OwnerCapability};
     use supra_framework::staking_config;
 
@@ -102,6 +102,7 @@ module supra_framework::staking_contract {
         beneficiary_for_operator: address,
     }
 
+	#[event]
     struct UpdateCommissionEvent has drop, store {
         staker: address,
         operator: address,
@@ -114,6 +115,7 @@ module supra_framework::staking_contract {
         update_commission_events: EventHandle<UpdateCommissionEvent>,
     }
 
+	#[event]
     struct CreateStakingContractEvent has drop, store {
         operator: address,
         voter: address,
@@ -122,6 +124,7 @@ module supra_framework::staking_contract {
         commission_percentage: u64,
     }
 
+	#[event]
     struct UpdateVoterEvent has drop, store {
         operator: address,
         pool_address: address,
@@ -129,17 +132,20 @@ module supra_framework::staking_contract {
         new_voter: address,
     }
 
+	#[event]
     struct ResetLockupEvent has drop, store {
         operator: address,
         pool_address: address,
     }
 
+	#[event]
     struct AddStakeEvent has drop, store {
         operator: address,
         pool_address: address,
         amount: u64
     }
 
+	#[event]
     struct RequestCommissionEvent has drop, store {
         operator: address,
         pool_address: address,
@@ -147,6 +153,7 @@ module supra_framework::staking_contract {
         commission_amount: u64,
     }
 
+	#[event]
     struct UnlockStakeEvent has drop, store {
         operator: address,
         pool_address: address,
@@ -154,18 +161,21 @@ module supra_framework::staking_contract {
         commission_paid: u64,
     }
 
+	#[event]
     struct SwitchOperatorEvent has drop, store {
         old_operator: address,
         new_operator: address,
         pool_address: address,
     }
 
+	#[event]
     struct AddDistributionEvent has drop, store {
         operator: address,
         pool_address: address,
         amount: u64,
     }
 
+	#[event]
     struct DistributeEvent has drop, store {
         operator: address,
         pool_address: address,
@@ -340,8 +350,7 @@ module supra_framework::staking_contract {
             signer_cap: stake_pool_signer_cap,
         });
 
-        emit_event(
-            &mut store.create_staking_contract_events,
+        emit(
             CreateStakingContractEvent { operator, voter, pool_address, principal, commission_percentage },
         );
         pool_address
@@ -361,8 +370,7 @@ module supra_framework::staking_contract {
 
         staking_contract.principal = staking_contract.principal + amount;
         let pool_address = staking_contract.pool_address;
-        emit_event(
-            &mut store.add_stake_events,
+        emit(
             AddStakeEvent { operator, pool_address, amount },
         );
     }
@@ -378,8 +386,7 @@ module supra_framework::staking_contract {
         let old_voter = stake::get_delegated_voter(pool_address);
         stake::set_delegated_voter_with_cap(&staking_contract.owner_cap, new_voter);
 
-        emit_event(
-            &mut store.update_voter_events,
+        emit(
             UpdateVoterEvent { operator, pool_address, old_voter, new_voter },
         );
     }
@@ -394,7 +401,7 @@ module supra_framework::staking_contract {
         let pool_address = staking_contract.pool_address;
         stake::increase_lockup_with_cap(&staking_contract.owner_cap);
 
-        emit_event(&mut store.reset_lockup_events, ResetLockupEvent { operator, pool_address });
+        emit( ResetLockupEvent { operator, pool_address });
     }
 
     /// Convenience function to allow a staker to update the commission percentage paid to the operator.
@@ -422,8 +429,8 @@ module supra_framework::staking_contract {
         if (!exists<StakingGroupUpdateCommissionEvent>(staker_address)) {
             move_to(staker, StakingGroupUpdateCommissionEvent { update_commission_events: account::new_event_handle<UpdateCommissionEvent>(staker)})
         };
-        emit_event(
-            &mut borrow_global_mut<StakingGroupUpdateCommissionEvent>(staker_address).update_commission_events,
+		let _ = borrow_global<StakingGroupUpdateCommissionEvent>(staker_address);
+        emit(
             UpdateCommissionEvent { staker: staker_address, operator, old_commission_percentage, new_commission_percentage }
         );
     }
@@ -482,8 +489,7 @@ module supra_framework::staking_contract {
         stake::unlock_with_cap(commission_amount, &staking_contract.owner_cap);
 
         let pool_address = staking_contract.pool_address;
-        emit_event(
-            request_commission_events,
+        emit(
             RequestCommissionEvent { operator, pool_address, accumulated_rewards, commission_amount },
         );
 
@@ -531,8 +537,7 @@ module supra_framework::staking_contract {
         stake::unlock_with_cap(amount, &staking_contract.owner_cap);
 
         let pool_address = staking_contract.pool_address;
-        emit_event(
-            &mut store.unlock_stake_events,
+        emit(
             UnlockStakeEvent { pool_address, operator, amount, commission_paid },
         );
     }
@@ -598,8 +603,7 @@ module supra_framework::staking_contract {
 
         let pool_address = staking_contract.pool_address;
         simple_map::add(staking_contracts, new_operator, staking_contract);
-        emit_event(
-            &mut store.switch_operator_events,
+        emit(
             SwitchOperatorEvent { pool_address, old_operator, new_operator }
         );
     }
@@ -670,8 +674,7 @@ module supra_framework::staking_contract {
             };
             aptos_account::deposit_coins(recipient, coin::extract(&mut coins, amount_to_distribute));
 
-            emit_event(
-                distribute_events,
+            emit(
                 DistributeEvent { operator, pool_address, recipient, amount: amount_to_distribute }
             );
         };
@@ -710,8 +713,7 @@ module supra_framework::staking_contract {
 
         pool_u64::buy_in(distribution_pool, recipient, coins_amount);
         let pool_address = staking_contract.pool_address;
-        emit_event(
-            add_distribution_events,
+        emit(
             AddDistributionEvent { operator, pool_address, amount: coins_amount }
         );
     }

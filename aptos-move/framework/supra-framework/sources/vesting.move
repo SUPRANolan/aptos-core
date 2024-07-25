@@ -48,7 +48,7 @@ module supra_framework::vesting {
     use supra_framework::aptos_account::{Self, assert_account_is_registered_for_apt};
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::coin::{Self, Coin};
-    use supra_framework::event::{EventHandle, emit_event};
+    use supra_framework::event::{EventHandle, emit};
     use supra_framework::stake;
     use supra_framework::staking_contract;
     use supra_framework::system_addresses;
@@ -170,6 +170,7 @@ module supra_framework::vesting {
         create_events: EventHandle<CreateVestingContractEvent>,
     }
 
+	#[event]
     struct CreateVestingContractEvent has drop, store {
         operator: address,
         voter: address,
@@ -180,6 +181,7 @@ module supra_framework::vesting {
         commission_percentage: u64,
     }
 
+	#[event]
     struct UpdateOperatorEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -189,6 +191,7 @@ module supra_framework::vesting {
         commission_percentage: u64,
     }
 
+	#[event]
     struct UpdateVoterEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -197,6 +200,7 @@ module supra_framework::vesting {
         new_voter: address,
     }
 
+	#[event]
     struct ResetLockupEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -204,6 +208,7 @@ module supra_framework::vesting {
         new_lockup_expiration_secs: u64,
     }
 
+	#[event]
     struct SetBeneficiaryEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -212,6 +217,7 @@ module supra_framework::vesting {
         new_beneficiary: address,
     }
 
+	#[event]
     struct UnlockRewardsEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -219,6 +225,7 @@ module supra_framework::vesting {
         amount: u64,
     }
 
+	#[event]
     struct VestEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -227,17 +234,20 @@ module supra_framework::vesting {
         amount: u64,
     }
 
+	#[event]
     struct DistributeEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
         amount: u64,
     }
 
+	#[event]
     struct TerminateEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
     }
 
+	#[event]
     struct AdminWithdrawEvent has drop, store {
         admin: address,
         vesting_contract_address: address,
@@ -497,8 +507,7 @@ module supra_framework::vesting {
         let contract_address = signer::address_of(&contract_signer);
         let admin_store = borrow_global_mut<AdminStore>(admin_address);
         vector::push_back(&mut admin_store.vesting_contracts, contract_address);
-        emit_event(
-            &mut admin_store.create_events,
+        emit(
             CreateVestingContractEvent {
                 operator,
                 voter,
@@ -595,8 +604,7 @@ module supra_framework::vesting {
         vesting_schedule.last_vested_period = next_period_to_vest;
         unlock_stake(vesting_contract, vested_amount);
 
-        emit_event(
-            &mut vesting_contract.vest_events,
+        emit(
             VestEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -650,8 +658,7 @@ module supra_framework::vesting {
             coin::destroy_zero(coins);
         };
 
-        emit_event(
-            &mut vesting_contract.distribute_events,
+        emit(
             DistributeEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -689,8 +696,7 @@ module supra_framework::vesting {
         vesting_contract.remaining_grant = 0;
         unlock_stake(vesting_contract, active_stake);
 
-        emit_event(
-            &mut vesting_contract.terminate_events,
+        emit(
             TerminateEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -714,8 +720,7 @@ module supra_framework::vesting {
         };
         aptos_account::deposit_coins(vesting_contract.withdrawal_address, coins);
 
-        emit_event(
-            &mut vesting_contract.admin_withdraw_events,
+        emit(
             AdminWithdrawEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -738,8 +743,7 @@ module supra_framework::vesting {
         vesting_contract.staking.operator = new_operator;
         vesting_contract.staking.commission_percentage = commission_percentage;
 
-        emit_event(
-            &mut vesting_contract.update_operator_events,
+        emit(
             UpdateOperatorEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -787,8 +791,7 @@ module supra_framework::vesting {
         staking_contract::update_voter(contract_signer, vesting_contract.staking.operator, new_voter);
         vesting_contract.staking.voter = new_voter;
 
-        emit_event(
-            &mut vesting_contract.update_voter_events,
+        emit(
             UpdateVoterEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -808,8 +811,7 @@ module supra_framework::vesting {
         let contract_signer = &get_vesting_account_signer_internal(vesting_contract);
         staking_contract::reset_lockup(contract_signer, vesting_contract.staking.operator);
 
-        emit_event(
-            &mut vesting_contract.reset_lockup_events,
+        emit(
             ResetLockupEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,
@@ -841,8 +843,7 @@ module supra_framework::vesting {
             simple_map::add(beneficiaries, shareholder, new_beneficiary);
         };
 
-        emit_event(
-            &mut vesting_contract.set_beneficiary_events,
+        emit(
             SetBeneficiaryEvent {
                 admin: vesting_contract.admin,
                 vesting_contract_address: contract_address,

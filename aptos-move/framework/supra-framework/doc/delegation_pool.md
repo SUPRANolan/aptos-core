@@ -629,7 +629,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -674,7 +675,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_ReactivateStakeEvent">ReactivateStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_ReactivateStakeEvent">ReactivateStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -713,7 +715,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -752,7 +755,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_WithdrawStakeEvent">WithdrawStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_WithdrawStakeEvent">WithdrawStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -791,7 +795,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_DistributeCommissionEvent">DistributeCommissionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_DistributeCommissionEvent">DistributeCommissionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -888,7 +893,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_VoteEvent">VoteEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_VoteEvent">VoteEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -939,7 +945,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_CreateProposalEvent">CreateProposalEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_CreateProposalEvent">CreateProposalEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -978,7 +985,8 @@ This struct should be stored in the delegation pool resource account.
 
 
 
-<pre><code><b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_DelegateVotingPowerEvent">DelegateVotingPowerEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="delegation_pool.md#0x1_delegation_pool_DelegateVotingPowerEvent">DelegateVotingPowerEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -2238,8 +2246,7 @@ Vote on a proposal with a voter's voting power. To successfully vote, the follow
     <b>let</b> pool_signer = <a href="delegation_pool.md#0x1_delegation_pool_retrieve_stake_pool_owner">retrieve_stake_pool_owner</a>(<b>borrow_global</b>&lt;<a href="delegation_pool.md#0x1_delegation_pool_DelegationPool">DelegationPool</a>&gt;(pool_address));
     <a href="supra_governance.md#0x1_supra_governance_partial_vote">supra_governance::partial_vote</a>(&pool_signer, pool_address, proposal_id, voting_power, should_pass);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> governance_records.vote_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_VoteEvent">VoteEvent</a> {
             voter: voter_address,
             proposal_id,
@@ -2304,8 +2311,7 @@ voting power in THIS delegation pool must be not less than the minimum required 
     );
 
     <b>let</b> governance_records = <b>borrow_global_mut</b>&lt;<a href="delegation_pool.md#0x1_delegation_pool_GovernanceRecords">GovernanceRecords</a>&gt;(pool_address);
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> governance_records.create_proposal_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_CreateProposalEvent">CreateProposalEvent</a> {
             proposal_id,
             voter: voter_addr,
@@ -3162,7 +3168,7 @@ this change won't take effects until the next lockup period.
             new_delegated_votes.active_shares_next_lockup + active_shares;
     };
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(&<b>mut</b> governance_records.delegate_voting_power_events, <a href="delegation_pool.md#0x1_delegation_pool_DelegateVotingPowerEvent">DelegateVotingPowerEvent</a> {
+    <a href="event.md#0x1_event_emit">event::emit</a>( <a href="delegation_pool.md#0x1_delegation_pool_DelegateVotingPowerEvent">DelegateVotingPowerEvent</a> {
         pool_address,
         delegator: delegator_address,
         voter: new_voter,
@@ -3216,8 +3222,7 @@ Add <code>amount</code> of coins to the delegation pool <code>pool_address</code
     // in order <b>to</b> appreciate all shares on the active pool atomically
     <a href="delegation_pool.md#0x1_delegation_pool_buy_in_active_shares">buy_in_active_shares</a>(pool, <a href="delegation_pool.md#0x1_delegation_pool_NULL_SHAREHOLDER">NULL_SHAREHOLDER</a>, add_stake_fee);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> pool.add_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_AddStakeEvent">AddStakeEvent</a> {
             pool_address,
             delegator_address,
@@ -3276,8 +3281,7 @@ at most how much active stake there is on the stake pool.
     <a href="delegation_pool.md#0x1_delegation_pool_buy_in_pending_inactive_shares">buy_in_pending_inactive_shares</a>(pool, delegator_address, amount);
     <a href="delegation_pool.md#0x1_delegation_pool_assert_min_pending_inactive_balance">assert_min_pending_inactive_balance</a>(pool, delegator_address);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> pool.unlock_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_UnlockStakeEvent">UnlockStakeEvent</a> {
             pool_address,
             delegator_address,
@@ -3330,8 +3334,7 @@ Move <code>amount</code> of coins from pending_inactive to active.
     <a href="delegation_pool.md#0x1_delegation_pool_buy_in_active_shares">buy_in_active_shares</a>(pool, delegator_address, amount);
     <a href="delegation_pool.md#0x1_delegation_pool_assert_min_active_balance">assert_min_active_balance</a>(pool, delegator_address);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> pool.reactivate_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_ReactivateStakeEvent">ReactivateStakeEvent</a> {
             pool_address,
             delegator_address,
@@ -3437,8 +3440,7 @@ Withdraw <code>amount</code> of owned inactive stake from the delegation pool at
     <b>let</b> (_, inactive, _, _) = <a href="stake.md#0x1_stake_get_stake">stake::get_stake</a>(pool_address);
     pool.total_coins_inactive = inactive;
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> pool.withdraw_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_WithdrawStakeEvent">WithdrawStakeEvent</a> {
             pool_address,
             delegator_address,
@@ -3934,8 +3936,7 @@ shares pools, assign commission to operator and eventually prepare delegation po
     // reward operator its commission out of uncommitted pending_inactive rewards
     <a href="delegation_pool.md#0x1_delegation_pool_buy_in_pending_inactive_shares">buy_in_pending_inactive_shares</a>(pool, <a href="delegation_pool.md#0x1_delegation_pool_beneficiary_for_operator">beneficiary_for_operator</a>(<a href="stake.md#0x1_stake_get_operator">stake::get_operator</a>(pool_address)), commission_pending_inactive);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> pool.distribute_commission_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="delegation_pool.md#0x1_delegation_pool_DistributeCommissionEvent">DistributeCommissionEvent</a> {
             pool_address,
             operator: <a href="stake.md#0x1_stake_get_operator">stake::get_operator</a>(pool_address),

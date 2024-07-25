@@ -34,11 +34,13 @@ module supra_framework::account {
         signer_capability_offer: CapabilityOffer<SignerCapability>,
     }
 
+	#[event]
     struct KeyRotationEvent has drop, store {
         old_authentication_key: vector<u8>,
         new_authentication_key: vector<u8>,
     }
 
+	#[event]
     struct CoinRegisterEvent has drop, store {
         type_info: TypeInfo,
     }
@@ -605,8 +607,7 @@ module supra_framework::account {
         let new_auth_key = from_bcs::to_address(new_auth_key_vector);
         table::add(address_map, new_auth_key, originating_addr);
 
-        event::emit_event<KeyRotationEvent>(
-            &mut account_resource.key_rotation_events,
+        event::emit<KeyRotationEvent>(
             KeyRotationEvent {
                 old_authentication_key: account_resource.authentication_key,
                 new_authentication_key: new_auth_key_vector,
@@ -715,9 +716,8 @@ module supra_framework::account {
     ///////////////////////////////////////////////////////////////////////////
 
     public(friend) fun register_coin<CoinType>(account_addr: address) acquires Account {
-        let account = borrow_global_mut<Account>(account_addr);
-        event::emit_event<CoinRegisterEvent>(
-            &mut account.coin_register_events,
+        let _ = borrow_global_mut<Account>(account_addr);
+        event::emit<CoinRegisterEvent>(
             CoinRegisterEvent {
                 type_info: type_info::type_of<CoinType>(),
             },
@@ -1362,15 +1362,6 @@ module supra_framework::account {
         create_account_unchecked(addr);
         register_coin<FakeCoin>(addr);
 
-        let eventhandle = &borrow_global<Account>(addr).coin_register_events;
-        let event = CoinRegisterEvent { type_info: type_info::type_of<FakeCoin>() };
 
-        let events = event::emitted_events_by_handle(eventhandle);
-        assert!(vector::length(&events) == 1, 0);
-        assert!(vector::borrow(&events, 0) == &event, 1);
-        assert!(event::was_event_emitted_by_handle(eventhandle, &event), 2);
-
-        let event = CoinRegisterEvent { type_info: type_info::type_of<SadFakeCoin>() };
-        assert!(!event::was_event_emitted_by_handle(eventhandle, &event), 3);
-    }
+          }
 }

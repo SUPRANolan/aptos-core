@@ -141,16 +141,19 @@ module supra_framework::fungible_asset {
         metadata: Object<Metadata>
     }
 
+	#[event]
     /// Emitted when fungible assets are deposited into a store.
     struct DepositEvent has drop, store {
         amount: u64,
     }
 
+	#[event]
     /// Emitted when fungible assets are withdrawn from a store.
     struct WithdrawEvent has drop, store {
         amount: u64,
     }
 
+	#[event]
     /// Emitted when a store's frozen status is updated.
     struct FrozenEvent has drop, store {
         frozen: bool,
@@ -444,7 +447,7 @@ module supra_framework::fungible_asset {
         borrow_global_mut<FungibleStore>(store_addr).frozen = frozen;
 
         let events = borrow_global_mut<FungibleAssetEvents>(store_addr);
-        event::emit_event(&mut events.frozen_events, FrozenEvent { frozen });
+        event::emit( FrozenEvent { frozen });
     }
 
     /// Burns a fungible asset
@@ -550,7 +553,7 @@ module supra_framework::fungible_asset {
         store.balance = store.balance + amount;
 
         let events = borrow_global_mut<FungibleAssetEvents>(store_addr);
-        event::emit_event(&mut events.deposit_events, DepositEvent { amount });
+        event::emit( DepositEvent { amount });
     }
 
     /// Extract `amount` of the fungible asset from `store`.
@@ -565,7 +568,7 @@ module supra_framework::fungible_asset {
 
         let events = borrow_global_mut<FungibleAssetEvents>(store_addr);
         let metadata = store.metadata;
-        event::emit_event(&mut events.withdraw_events, WithdrawEvent { amount });
+        event::emit( WithdrawEvent { amount });
 
         FungibleAsset { metadata, amount }
     }

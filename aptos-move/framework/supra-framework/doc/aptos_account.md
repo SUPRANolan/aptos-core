@@ -87,7 +87,8 @@ By default, this is enabled. Users can opt-out by disabling at any time.
 Event emitted when an account's direct coins transfer config is updated.
 
 
-<pre><code><b>struct</b> <a href="aptos_account.md#0x1_aptos_account_DirectCoinTransferConfigUpdatedEvent">DirectCoinTransferConfigUpdatedEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="aptos_account.md#0x1_aptos_account_DirectCoinTransferConfigUpdatedEvent">DirectCoinTransferConfigUpdatedEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -434,16 +435,14 @@ Set whether <code><a href="account.md#0x1_account">account</a></code> can receiv
         };
 
         direct_transfer_config.allow_arbitrary_coin_transfers = allow;
-        emit_event(
-            &<b>mut</b> direct_transfer_config.update_coin_transfer_events,
+        emit(
             <a href="aptos_account.md#0x1_aptos_account_DirectCoinTransferConfigUpdatedEvent">DirectCoinTransferConfigUpdatedEvent</a> { new_allow_direct_transfers: allow });
     } <b>else</b> {
         <b>let</b> direct_transfer_config = <a href="aptos_account.md#0x1_aptos_account_DirectTransferConfig">DirectTransferConfig</a> {
             allow_arbitrary_coin_transfers: allow,
             update_coin_transfer_events: new_event_handle&lt;<a href="aptos_account.md#0x1_aptos_account_DirectCoinTransferConfigUpdatedEvent">DirectCoinTransferConfigUpdatedEvent</a>&gt;(<a href="account.md#0x1_account">account</a>),
         };
-        emit_event(
-            &<b>mut</b> direct_transfer_config.update_coin_transfer_events,
+        emit(
             <a href="aptos_account.md#0x1_aptos_account_DirectCoinTransferConfigUpdatedEvent">DirectCoinTransferConfigUpdatedEvent</a> { new_allow_direct_transfers: allow });
         <b>move_to</b>(<a href="account.md#0x1_account">account</a>, direct_transfer_config);
     };
@@ -590,6 +589,34 @@ Limit the address of auth_key is not @vm_reserved / @supra_framework / @aptos_to
 <b>ensures</b> <b>exists</b>&lt;<a href="account.md#0x1_account_Account">account::Account</a>&gt;(auth_key);
 // This enforces <a id="high-level-req-2" href="#high-level-req">high-level requirement 2</a>:
 <b>ensures</b> <b>exists</b>&lt;<a href="coin.md#0x1_coin_CoinStore">coin::CoinStore</a>&lt;SupraCoin&gt;&gt;(auth_key);
+</code></pre>
+
+
+
+
+<a id="0x1_aptos_account_CreateAccountAbortsIf"></a>
+
+
+<pre><code><b>schema</b> <a href="aptos_account.md#0x1_aptos_account_CreateAccountAbortsIf">CreateAccountAbortsIf</a> {
+    auth_key: <b>address</b>;
+    <b>aborts_if</b> <b>exists</b>&lt;<a href="account.md#0x1_account_Account">account::Account</a>&gt;(auth_key);
+    <b>aborts_if</b> <a href="aptos_account.md#0x1_aptos_account_length_judgment">length_judgment</a>(auth_key);
+    <b>aborts_if</b> auth_key == @vm_reserved || auth_key == @supra_framework || auth_key == @aptos_token;
+}
+</code></pre>
+
+
+
+
+<a id="0x1_aptos_account_length_judgment"></a>
+
+
+<pre><code><b>fun</b> <a href="aptos_account.md#0x1_aptos_account_length_judgment">length_judgment</a>(auth_key: <b>address</b>): bool {
+   <b>use</b> std::bcs;
+
+   <b>let</b> authentication_key = <a href="../../aptos-stdlib/../move-stdlib/doc/bcs.md#0x1_bcs_to_bytes">bcs::to_bytes</a>(auth_key);
+   len(authentication_key) != 32
+}
 </code></pre>
 
 

@@ -29,6 +29,7 @@ module supra_framework::block {
         update_epoch_interval_events: EventHandle<UpdateEpochIntervalEvent>,
     }
 
+	#[event]
     /// Should be in-sync with NewBlockEvent rust struct in new_block.rs
     struct NewBlockEvent has drop, store {
         hash: address,
@@ -42,6 +43,7 @@ module supra_framework::block {
         time_microseconds: u64,
     }
 
+	#[event]
     /// Event emitted when a proposal is created.
     struct UpdateEpochIntervalEvent has drop, store {
         old_epoch_interval: u64,
@@ -84,8 +86,7 @@ module supra_framework::block {
         let old_epoch_interval = block_resource.epoch_interval;
         block_resource.epoch_interval = new_epoch_interval;
 
-        event::emit_event<UpdateEpochIntervalEvent>(
-            &mut block_resource.update_epoch_interval_events,
+        event::emit<UpdateEpochIntervalEvent>(
             UpdateEpochIntervalEvent { old_epoch_interval, new_epoch_interval },
         );
     }
@@ -169,7 +170,7 @@ module supra_framework::block {
             event::counter(event_handle) == new_block_event.height,
             error::invalid_argument(ENUM_NEW_BLOCK_EVENTS_DOES_NOT_MATCH_BLOCK_HEIGHT),
         );
-        event::emit_event<NewBlockEvent>(event_handle, new_block_event);
+        event::emit<NewBlockEvent>( new_block_event);
     }
 
     /// Emit a `NewBlockEvent` event. This function will be invoked by genesis directly to generate the very first
@@ -200,8 +201,7 @@ module supra_framework::block {
         let block_metadata_ref = borrow_global_mut<BlockResource>(@supra_framework);
         block_metadata_ref.height = event::counter(&block_metadata_ref.new_block_events);
 
-        event::emit_event<NewBlockEvent>(
-            &mut block_metadata_ref.new_block_events,
+        event::emit<NewBlockEvent>(
             NewBlockEvent {
                 hash: fake_block_hash,
                 epoch: reconfiguration::current_epoch(),

@@ -257,7 +257,8 @@ Extra metadata (e.g. description, code url) can be part of the ProposalType stru
 
 
 
-<pre><code><b>struct</b> <a href="voting.md#0x1_voting_VotingEvents">VotingEvents</a> <b>has</b> store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="voting.md#0x1_voting_VotingEvents">VotingEvents</a> <b>has</b> store
 </code></pre>
 
 
@@ -302,7 +303,8 @@ Extra metadata (e.g. description, code url) can be part of the ProposalType stru
 
 
 
-<pre><code><b>struct</b> <a href="voting.md#0x1_voting_CreateProposalEvent">CreateProposalEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="voting.md#0x1_voting_CreateProposalEvent">CreateProposalEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -359,7 +361,8 @@ Extra metadata (e.g. description, code url) can be part of the ProposalType stru
 
 
 
-<pre><code><b>struct</b> <a href="voting.md#0x1_voting_RegisterForumEvent">RegisterForumEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="voting.md#0x1_voting_RegisterForumEvent">RegisterForumEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -392,7 +395,8 @@ Extra metadata (e.g. description, code url) can be part of the ProposalType stru
 
 
 
-<pre><code><b>struct</b> <a href="voting.md#0x1_voting_VoteEvent">VoteEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="voting.md#0x1_voting_VoteEvent">VoteEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -425,7 +429,8 @@ Extra metadata (e.g. description, code url) can be part of the ProposalType stru
 
 
 
-<pre><code><b>struct</b> <a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -679,8 +684,7 @@ Key used to track the resolvable time in the proposal's metadata.
         }
     };
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>&lt;<a href="voting.md#0x1_voting_RegisterForumEvent">RegisterForumEvent</a>&gt;(
-        &<b>mut</b> voting_forum.events.register_forum_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>&lt;<a href="voting.md#0x1_voting_RegisterForumEvent">RegisterForumEvent</a>&gt;(
         <a href="voting.md#0x1_voting_RegisterForumEvent">RegisterForumEvent</a> {
             hosting_account: addr,
             proposal_type_info: <a href="../../aptos-stdlib/doc/type_info.md#0x1_type_info_type_of">type_info::type_of</a>&lt;ProposalType&gt;(),
@@ -832,8 +836,7 @@ resolve this proposal.
         resolution_time_secs: 0,
     });
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>&lt;<a href="voting.md#0x1_voting_CreateProposalEvent">CreateProposalEvent</a>&gt;(
-        &<b>mut</b> voting_forum.events.create_proposal_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>&lt;<a href="voting.md#0x1_voting_CreateProposalEvent">CreateProposalEvent</a>&gt;(
         <a href="voting.md#0x1_voting_CreateProposalEvent">CreateProposalEvent</a> {
             proposal_id,
             early_resolution_vote_threshold,
@@ -911,8 +914,7 @@ This guarantees that voting eligibility and voting power are controlled by the r
         <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_add">simple_map::add</a>(&<b>mut</b> proposal.metadata, key, timestamp_secs_bytes);
     };
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>&lt;<a href="voting.md#0x1_voting_VoteEvent">VoteEvent</a>&gt;(
-        &<b>mut</b> voting_forum.events.vote_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>&lt;<a href="voting.md#0x1_voting_VoteEvent">VoteEvent</a>&gt;(
         <a href="voting.md#0x1_voting_VoteEvent">VoteEvent</a> { proposal_id, num_votes },
     );
 }
@@ -1006,8 +1008,7 @@ there are more yes votes than no. If either of these conditions is not met, this
     proposal.is_resolved = <b>true</b>;
     proposal.resolution_time_secs = <a href="timestamp.md#0x1_timestamp_now_seconds">timestamp::now_seconds</a>();
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>&lt;<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>&gt;(
-        &<b>mut</b> voting_forum.events.resolve_proposal_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>&lt;<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>&gt;(
         <a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a> {
             proposal_id,
             yes_votes: proposal.yes_votes,
@@ -1094,8 +1095,7 @@ there are more yes votes than no. If either of these conditions is not met, this
     // For multi-step proposals, we emit one `<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>` <a href="event.md#0x1_event">event</a> per step in the multi-step proposal. This means
     // that we emit multiple `<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>` events for the same multi-step proposal.
     <b>let</b> resolved_early = <a href="voting.md#0x1_voting_can_be_resolved_early">can_be_resolved_early</a>(proposal);
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>&lt;<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>&gt;(
-        &<b>mut</b> voting_forum.events.resolve_proposal_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>&lt;<a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a>&gt;(
         <a href="voting.md#0x1_voting_ResolveProposal">ResolveProposal</a> {
             proposal_id,
             yes_votes: proposal.yes_votes,

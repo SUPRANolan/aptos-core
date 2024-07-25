@@ -42,7 +42,7 @@ module supra_framework::multisig_account {
     use supra_framework::chain_id;
     use supra_framework::create_signer::create_signer;
     use supra_framework::coin;
-    use supra_framework::event::{EventHandle, emit_event};
+    use supra_framework::event::{EventHandle, emit};
     use supra_framework::timestamp::now_seconds;
     use aptos_std::simple_map::{Self, SimpleMap};
     use aptos_std::table::{Self, Table};
@@ -203,22 +203,26 @@ module supra_framework::multisig_account {
         num_signatures_required: u64,
     }
 
+	#[event]
     /// Event emitted when new owners are added to the multisig account.
     struct AddOwnersEvent has drop, store {
         owners_added: vector<address>,
     }
 
+	#[event]
     /// Event emitted when new owners are removed from the multisig account.
     struct RemoveOwnersEvent has drop, store {
         owners_removed: vector<address>,
     }
 
+	#[event]
     /// Event emitted when the number of signatures required is updated.
     struct UpdateSignaturesRequiredEvent has drop, store {
         old_num_signatures_required: u64,
         new_num_signatures_required: u64,
     }
 
+	#[event]
     /// Event emitted when a transaction is created.
     struct CreateTransactionEvent has drop, store {
         creator: address,
@@ -226,6 +230,7 @@ module supra_framework::multisig_account {
         transaction: MultisigTransaction,
     }
 
+	#[event]
     /// Event emitted when an owner approves or rejects a transaction.
     struct VoteEvent has drop, store {
         owner: address,
@@ -233,6 +238,7 @@ module supra_framework::multisig_account {
         approved: bool,
     }
 
+	#[event]
     /// Event emitted when a transaction is officially rejected because the number of rejections has reached the
     /// number of signatures required.
     struct ExecuteRejectedTransactionEvent has drop, store {
@@ -241,6 +247,7 @@ module supra_framework::multisig_account {
         executor: address,
     }
 
+	#[event]
     /// Event emitted when a transaction is executed.
     struct TransactionExecutionSucceededEvent has drop, store {
         executor: address,
@@ -249,6 +256,7 @@ module supra_framework::multisig_account {
         num_approvals: u64,
     }
 
+	#[event]
     /// Event emitted when a transaction's execution failed.
     struct TransactionExecutionFailedEvent has drop, store {
         executor: address,
@@ -258,12 +266,14 @@ module supra_framework::multisig_account {
         execution_error: ExecutionError,
     }
 
+	#[event]
     /// Event emitted when a transaction's metadata is updated.
     struct MetadataUpdatedEvent has drop, store {
         old_metadata: SimpleMap<String, vector<u8>>,
         new_metadata: SimpleMap<String, vector<u8>>,
     }
 
+	#[event]
     /// Event emitted when a transaction's timeout duration is updated.
     struct TimeoutDurationUpdatedEvent has drop, store {
         executor: address,
@@ -771,7 +781,7 @@ module supra_framework::multisig_account {
         multisig_account: &signer,
         keys: vector<String>,
         values: vector<vector<u8>>,
-        emit_event: bool,
+        emit: bool,
     ) acquires MultisigAccount {
         let num_attributes = vector::length(&keys);
         assert!(
@@ -798,9 +808,8 @@ module supra_framework::multisig_account {
             i = i + 1;
         };
 
-        if (emit_event) {
-            emit_event(
-                &mut multisig_account_resource.metadata_updated_events,
+        if (emit) {
+            emit(
                 MetadataUpdatedEvent {
                     old_metadata,
                     new_metadata: multisig_account_resource.metadata,
@@ -817,8 +826,7 @@ module supra_framework::multisig_account {
         let multisig_account_resource = borrow_global_mut<MultisigAccount>(address_of(multisig_account));
         let old_timeout_duration = multisig_account_resource.timeout_duration;
         multisig_account_resource.timeout_duration = timeout_duration;
-        emit_event(
-            &mut multisig_account_resource.TimeoutDurationUpdatedEvent,
+        emit(
             TimeoutDurationUpdatedEvent {
                 executor: address_of(multisig_account),
                 old_timeout_duration,
@@ -911,8 +919,7 @@ module supra_framework::multisig_account {
             simple_map::add(votes, owner_addr, approved);
         };
 
-        emit_event(
-            &mut multisig_account_resource.vote_events,
+        emit(
             VoteEvent {
                 owner: owner_addr,
                 sequence_number,
@@ -942,8 +949,7 @@ module supra_framework::multisig_account {
             error::invalid_state(ENOT_ENOUGH_REJECTIONS),
         );
 
-        emit_event(
-            &mut multisig_account_resource.execute_rejected_transaction_events,
+        emit(
             ExecuteRejectedTransactionEvent {
                 sequence_number,
                 num_rejections,
@@ -1000,8 +1006,7 @@ module supra_framework::multisig_account {
     ) acquires MultisigAccount {
         let multisig_account_resource = borrow_global_mut<MultisigAccount>(multisig_account);
         let (num_approvals, _) = remove_executed_transaction(multisig_account_resource);
-        emit_event(
-            &mut multisig_account_resource.execute_transaction_events,
+        emit(
             TransactionExecutionSucceededEvent {
                 sequence_number: multisig_account_resource.last_executed_sequence_number,
                 transaction_payload,
@@ -1021,8 +1026,7 @@ module supra_framework::multisig_account {
     ) acquires MultisigAccount {
         let multisig_account_resource = borrow_global_mut<MultisigAccount>(multisig_account);
         let (num_approvals, _) = remove_executed_transaction(multisig_account_resource);
-        emit_event(
-            &mut multisig_account_resource.transaction_execution_failed_events,
+        emit(
             TransactionExecutionFailedEvent {
                 executor,
                 sequence_number: multisig_account_resource.last_executed_sequence_number,
@@ -1050,8 +1054,7 @@ module supra_framework::multisig_account {
         let sequence_number = multisig_account.next_sequence_number;
         multisig_account.next_sequence_number = sequence_number + 1;
         table::add(&mut multisig_account.transactions, sequence_number, transaction);
-        emit_event(
-            &mut multisig_account.create_transaction_events,
+        emit(
             CreateTransactionEvent { creator, sequence_number, transaction },
         );
     }
@@ -1142,8 +1145,7 @@ module supra_framework::multisig_account {
                 &multisig_account_ref_mut.owners,
                 multisig_address
             );
-            emit_event(
-                &mut multisig_account_ref_mut.add_owners_events,
+            emit(
                 AddOwnersEvent { owners_added: new_owners }
             );
         };
@@ -1163,8 +1165,7 @@ module supra_framework::multisig_account {
             });
             // Only emit event if owner(s) actually removed.
             if (vector::length(&owners_removed) > 0) {
-                emit_event(
-                    &mut multisig_account_ref_mut.remove_owners_events,
+                emit(
                     RemoveOwnersEvent { owners_removed }
                 );
             }
@@ -1183,8 +1184,7 @@ module supra_framework::multisig_account {
             if (new_num_signatures_required != old_num_signatures_required) {
                 multisig_account_ref_mut.num_signatures_required =
                     new_num_signatures_required;
-                emit_event(
-                    &mut multisig_account_ref_mut.update_signature_required_events,
+                emit(
                     UpdateSignaturesRequiredEvent {
                         old_num_signatures_required,
                         new_num_signatures_required,

@@ -478,7 +478,8 @@ Used only for verifying multisig account creation on top of existing accounts an
 Event emitted when new owners are added to the multisig account.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_AddOwnersEvent">AddOwnersEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_AddOwnersEvent">AddOwnersEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -506,7 +507,8 @@ Event emitted when new owners are added to the multisig account.
 Event emitted when new owners are removed from the multisig account.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_RemoveOwnersEvent">RemoveOwnersEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_RemoveOwnersEvent">RemoveOwnersEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -534,7 +536,8 @@ Event emitted when new owners are removed from the multisig account.
 Event emitted when the number of signatures required is updated.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_UpdateSignaturesRequiredEvent">UpdateSignaturesRequiredEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_UpdateSignaturesRequiredEvent">UpdateSignaturesRequiredEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -568,7 +571,8 @@ Event emitted when the number of signatures required is updated.
 Event emitted when a transaction is created.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_CreateTransactionEvent">CreateTransactionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_CreateTransactionEvent">CreateTransactionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -608,7 +612,8 @@ Event emitted when a transaction is created.
 Event emitted when an owner approves or rejects a transaction.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_VoteEvent">VoteEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_VoteEvent">VoteEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -649,7 +654,8 @@ Event emitted when a transaction is officially rejected because the number of re
 number of signatures required.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_ExecuteRejectedTransactionEvent">ExecuteRejectedTransactionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_ExecuteRejectedTransactionEvent">ExecuteRejectedTransactionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -689,7 +695,8 @@ number of signatures required.
 Event emitted when a transaction is executed.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionSucceededEvent">TransactionExecutionSucceededEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionSucceededEvent">TransactionExecutionSucceededEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -735,7 +742,8 @@ Event emitted when a transaction is executed.
 Event emitted when a transaction's execution failed.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionFailedEvent">TransactionExecutionFailedEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionFailedEvent">TransactionExecutionFailedEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -787,7 +795,8 @@ Event emitted when a transaction's execution failed.
 Event emitted when a transaction's metadata is updated.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_MetadataUpdatedEvent">MetadataUpdatedEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_MetadataUpdatedEvent">MetadataUpdatedEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -821,7 +830,8 @@ Event emitted when a transaction's metadata is updated.
 Event emitted when a transaction's timeout duration is updated.
 
 
-<pre><code><b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TimeoutDurationUpdatedEvent">TimeoutDurationUpdatedEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="multisig_account.md#0x1_multisig_account_TimeoutDurationUpdatedEvent">TimeoutDurationUpdatedEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -2156,7 +2166,7 @@ maliciously alter the number of signatures required.
 
 
 
-<pre><code><b>fun</b> <a href="multisig_account.md#0x1_multisig_account_update_metadata_internal">update_metadata_internal</a>(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>, keys: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="../../aptos-stdlib/../move-stdlib/doc/string.md#0x1_string_String">string::String</a>&gt;, values: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u8&gt;&gt;, emit_event: bool)
+<pre><code><b>fun</b> <a href="multisig_account.md#0x1_multisig_account_update_metadata_internal">update_metadata_internal</a>(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>, keys: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="../../aptos-stdlib/../move-stdlib/doc/string.md#0x1_string_String">string::String</a>&gt;, values: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u8&gt;&gt;, emit: bool)
 </code></pre>
 
 
@@ -2169,7 +2179,7 @@ maliciously alter the number of signatures required.
     <a href="multisig_account.md#0x1_multisig_account">multisig_account</a>: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>,
     keys: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;String&gt;,
     values: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u8&gt;&gt;,
-    emit_event: bool,
+    emit: bool,
 ) <b>acquires</b> <a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a> {
     <b>let</b> num_attributes = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&keys);
     <b>assert</b>!(
@@ -2196,9 +2206,8 @@ maliciously alter the number of signatures required.
         i = i + 1;
     };
 
-    <b>if</b> (emit_event) {
-        emit_event(
-            &<b>mut</b> multisig_account_resource.metadata_updated_events,
+    <b>if</b> (emit) {
+        emit(
             <a href="multisig_account.md#0x1_multisig_account_MetadataUpdatedEvent">MetadataUpdatedEvent</a> {
                 old_metadata,
                 new_metadata: multisig_account_resource.metadata,
@@ -2235,8 +2244,7 @@ Update the timeout duration for the multisig account.
     <b>let</b> multisig_account_resource = <b>borrow_global_mut</b>&lt;<a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a>&gt;(address_of(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>));
     <b>let</b> old_timeout_duration = multisig_account_resource.timeout_duration;
     multisig_account_resource.timeout_duration = timeout_duration;
-    emit_event(
-        &<b>mut</b> multisig_account_resource.<a href="multisig_account.md#0x1_multisig_account_TimeoutDurationUpdatedEvent">TimeoutDurationUpdatedEvent</a>,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_TimeoutDurationUpdatedEvent">TimeoutDurationUpdatedEvent</a> {
             executor: address_of(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>),
             old_timeout_duration,
@@ -2427,8 +2435,7 @@ Generic function that can be used to either approve or reject a multisig transac
         <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_add">simple_map::add</a>(votes, owner_addr, approved);
     };
 
-    emit_event(
-        &<b>mut</b> multisig_account_resource.vote_events,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_VoteEvent">VoteEvent</a> {
             owner: owner_addr,
             sequence_number,
@@ -2478,8 +2485,7 @@ Remove the next transaction if it has sufficient owner rejections.
         <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_state">error::invalid_state</a>(<a href="multisig_account.md#0x1_multisig_account_ENOT_ENOUGH_REJECTIONS">ENOT_ENOUGH_REJECTIONS</a>),
     );
 
-    emit_event(
-        &<b>mut</b> multisig_account_resource.execute_rejected_transaction_events,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_ExecuteRejectedTransactionEvent">ExecuteRejectedTransactionEvent</a> {
             sequence_number,
             num_rejections,
@@ -2574,8 +2580,7 @@ This function is private so no other code can call this beside the VM itself as 
 ) <b>acquires</b> <a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a> {
     <b>let</b> multisig_account_resource = <b>borrow_global_mut</b>&lt;<a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a>&gt;(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>);
     <b>let</b> (num_approvals, _) = <a href="multisig_account.md#0x1_multisig_account_remove_executed_transaction">remove_executed_transaction</a>(multisig_account_resource);
-    emit_event(
-        &<b>mut</b> multisig_account_resource.execute_transaction_events,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionSucceededEvent">TransactionExecutionSucceededEvent</a> {
             sequence_number: multisig_account_resource.last_executed_sequence_number,
             transaction_payload,
@@ -2615,8 +2620,7 @@ This function is private so no other code can call this beside the VM itself as 
 ) <b>acquires</b> <a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a> {
     <b>let</b> multisig_account_resource = <b>borrow_global_mut</b>&lt;<a href="multisig_account.md#0x1_multisig_account_MultisigAccount">MultisigAccount</a>&gt;(<a href="multisig_account.md#0x1_multisig_account">multisig_account</a>);
     <b>let</b> (num_approvals, _) = <a href="multisig_account.md#0x1_multisig_account_remove_executed_transaction">remove_executed_transaction</a>(multisig_account_resource);
-    emit_event(
-        &<b>mut</b> multisig_account_resource.transaction_execution_failed_events,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_TransactionExecutionFailedEvent">TransactionExecutionFailedEvent</a> {
             executor,
             sequence_number: multisig_account_resource.last_executed_sequence_number,
@@ -2681,8 +2685,7 @@ This function is private so no other code can call this beside the VM itself as 
     <b>let</b> sequence_number = <a href="multisig_account.md#0x1_multisig_account">multisig_account</a>.next_sequence_number;
     <a href="multisig_account.md#0x1_multisig_account">multisig_account</a>.next_sequence_number = sequence_number + 1;
     <a href="../../aptos-stdlib/doc/table.md#0x1_table_add">table::add</a>(&<b>mut</b> <a href="multisig_account.md#0x1_multisig_account">multisig_account</a>.transactions, sequence_number, transaction);
-    emit_event(
-        &<b>mut</b> <a href="multisig_account.md#0x1_multisig_account">multisig_account</a>.create_transaction_events,
+    emit(
         <a href="multisig_account.md#0x1_multisig_account_CreateTransactionEvent">CreateTransactionEvent</a> { creator, sequence_number, transaction },
     );
 }
@@ -2913,8 +2916,7 @@ Add new owners, remove owners to remove, update signatures required.
             &multisig_account_ref_mut.owners,
             multisig_address
         );
-        emit_event(
-            &<b>mut</b> multisig_account_ref_mut.add_owners_events,
+        emit(
             <a href="multisig_account.md#0x1_multisig_account_AddOwnersEvent">AddOwnersEvent</a> { owners_added: new_owners }
         );
     };
@@ -2934,8 +2936,7 @@ Add new owners, remove owners to remove, update signatures required.
         });
         // Only emit <a href="event.md#0x1_event">event</a> <b>if</b> owner(s) actually removed.
         <b>if</b> (<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&owners_removed) &gt; 0) {
-            emit_event(
-                &<b>mut</b> multisig_account_ref_mut.remove_owners_events,
+            emit(
                 <a href="multisig_account.md#0x1_multisig_account_RemoveOwnersEvent">RemoveOwnersEvent</a> { owners_removed }
             );
         }
@@ -2954,8 +2955,7 @@ Add new owners, remove owners to remove, update signatures required.
         <b>if</b> (new_num_signatures_required != old_num_signatures_required) {
             multisig_account_ref_mut.num_signatures_required =
                 new_num_signatures_required;
-            emit_event(
-                &<b>mut</b> multisig_account_ref_mut.update_signature_required_events,
+            emit(
                 <a href="multisig_account.md#0x1_multisig_account_UpdateSignaturesRequiredEvent">UpdateSignaturesRequiredEvent</a> {
                     old_num_signatures_required,
                     new_num_signatures_required,

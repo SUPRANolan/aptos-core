@@ -328,7 +328,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UpdateCommissionEvent">UpdateCommissionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UpdateCommissionEvent">UpdateCommissionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -401,7 +402,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_CreateStakingContractEvent">CreateStakingContractEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_CreateStakingContractEvent">CreateStakingContractEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -452,7 +454,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UpdateVoterEvent">UpdateVoterEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UpdateVoterEvent">UpdateVoterEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -497,7 +500,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_ResetLockupEvent">ResetLockupEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_ResetLockupEvent">ResetLockupEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -530,7 +534,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -569,7 +574,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_RequestCommissionEvent">RequestCommissionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_RequestCommissionEvent">RequestCommissionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -614,7 +620,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -659,7 +666,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_SwitchOperatorEvent">SwitchOperatorEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_SwitchOperatorEvent">SwitchOperatorEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -698,7 +706,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_AddDistributionEvent">AddDistributionEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_AddDistributionEvent">AddDistributionEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -737,7 +746,8 @@ pool.
 
 
 
-<pre><code><b>struct</b> <a href="staking_contract.md#0x1_staking_contract_DistributeEvent">DistributeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="staking_contract.md#0x1_staking_contract_DistributeEvent">DistributeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -1285,8 +1295,7 @@ Staker can call this function to create a simple staking contract with a specifi
         signer_cap: stake_pool_signer_cap,
     });
 
-    emit_event(
-        &<b>mut</b> store.create_staking_contract_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_CreateStakingContractEvent">CreateStakingContractEvent</a> { operator, voter, pool_address, principal, commission_percentage },
     );
     pool_address
@@ -1326,8 +1335,7 @@ Add more stake to an existing staking contract.
 
     <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.principal = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.principal + amount;
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
-    emit_event(
-        &<b>mut</b> store.add_stake_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_AddStakeEvent">AddStakeEvent</a> { operator, pool_address, amount },
     );
 }
@@ -1363,8 +1371,7 @@ Convenient function to allow the staker to update the voter address in a staking
     <b>let</b> old_voter = <a href="stake.md#0x1_stake_get_delegated_voter">stake::get_delegated_voter</a>(pool_address);
     <a href="stake.md#0x1_stake_set_delegated_voter_with_cap">stake::set_delegated_voter_with_cap</a>(&<a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.owner_cap, new_voter);
 
-    emit_event(
-        &<b>mut</b> store.update_voter_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_UpdateVoterEvent">UpdateVoterEvent</a> { operator, pool_address, old_voter, new_voter },
     );
 }
@@ -1399,7 +1406,7 @@ Convenient function to allow the staker to reset their stake pool's lockup perio
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
     <a href="stake.md#0x1_stake_increase_lockup_with_cap">stake::increase_lockup_with_cap</a>(&<a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.owner_cap);
 
-    emit_event(&<b>mut</b> store.reset_lockup_events, <a href="staking_contract.md#0x1_staking_contract_ResetLockupEvent">ResetLockupEvent</a> { operator, pool_address });
+    emit( <a href="staking_contract.md#0x1_staking_contract_ResetLockupEvent">ResetLockupEvent</a> { operator, pool_address });
 }
 </code></pre>
 
@@ -1447,8 +1454,8 @@ TODO: fix the typo in function name. commision -> commission
     <b>if</b> (!<b>exists</b>&lt;<a href="staking_contract.md#0x1_staking_contract_StakingGroupUpdateCommissionEvent">StakingGroupUpdateCommissionEvent</a>&gt;(staker_address)) {
         <b>move_to</b>(staker, <a href="staking_contract.md#0x1_staking_contract_StakingGroupUpdateCommissionEvent">StakingGroupUpdateCommissionEvent</a> { update_commission_events: <a href="account.md#0x1_account_new_event_handle">account::new_event_handle</a>&lt;<a href="staking_contract.md#0x1_staking_contract_UpdateCommissionEvent">UpdateCommissionEvent</a>&gt;(staker)})
     };
-    emit_event(
-        &<b>mut</b> <b>borrow_global_mut</b>&lt;<a href="staking_contract.md#0x1_staking_contract_StakingGroupUpdateCommissionEvent">StakingGroupUpdateCommissionEvent</a>&gt;(staker_address).update_commission_events,
+		<b>let</b> _ = <b>borrow_global</b>&lt;<a href="staking_contract.md#0x1_staking_contract_StakingGroupUpdateCommissionEvent">StakingGroupUpdateCommissionEvent</a>&gt;(staker_address);
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_UpdateCommissionEvent">UpdateCommissionEvent</a> { staker: staker_address, operator, old_commission_percentage, new_commission_percentage }
     );
 }
@@ -1547,8 +1554,7 @@ Only staker, operator or beneficiary can call this.
     <a href="stake.md#0x1_stake_unlock_with_cap">stake::unlock_with_cap</a>(commission_amount, &<a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.owner_cap);
 
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
-    emit_event(
-        request_commission_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_RequestCommissionEvent">RequestCommissionEvent</a> { operator, pool_address, accumulated_rewards, commission_amount },
     );
 
@@ -1616,8 +1622,7 @@ This also triggers paying commission to the operator for accounting simplicity.
     <a href="stake.md#0x1_stake_unlock_with_cap">stake::unlock_with_cap</a>(amount, &<a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.owner_cap);
 
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
-    emit_event(
-        &<b>mut</b> store.unlock_stake_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_UnlockStakeEvent">UnlockStakeEvent</a> { pool_address, operator, amount, commission_paid },
     );
 }
@@ -1743,8 +1748,7 @@ Allows staker to switch operator without going through the lenghthy process to u
 
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
     <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_add">simple_map::add</a>(staking_contracts, new_operator, <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>);
-    emit_event(
-        &<b>mut</b> store.switch_operator_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_SwitchOperatorEvent">SwitchOperatorEvent</a> { pool_address, old_operator, new_operator }
     );
 }
@@ -1875,8 +1879,7 @@ Distribute all unlocked (inactive) funds according to distribution shares.
         };
         <a href="aptos_account.md#0x1_aptos_account_deposit_coins">aptos_account::deposit_coins</a>(recipient, <a href="coin.md#0x1_coin_extract">coin::extract</a>(&<b>mut</b> coins, amount_to_distribute));
 
-        emit_event(
-            distribute_events,
+        emit(
             <a href="staking_contract.md#0x1_staking_contract_DistributeEvent">DistributeEvent</a> { operator, pool_address, recipient, amount: amount_to_distribute }
         );
     };
@@ -1955,8 +1958,7 @@ Add a new distribution for <code>recipient</code> and <code>amount</code> to the
 
     <a href="../../aptos-stdlib/doc/pool_u64.md#0x1_pool_u64_buy_in">pool_u64::buy_in</a>(distribution_pool, recipient, coins_amount);
     <b>let</b> pool_address = <a href="staking_contract.md#0x1_staking_contract">staking_contract</a>.pool_address;
-    emit_event(
-        add_distribution_events,
+    emit(
         <a href="staking_contract.md#0x1_staking_contract_AddDistributionEvent">AddDistributionEvent</a> { operator, pool_address, amount: coins_amount }
     );
 }

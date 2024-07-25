@@ -586,7 +586,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_RegisterValidatorCandidateEvent">RegisterValidatorCandidateEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_RegisterValidatorCandidateEvent">RegisterValidatorCandidateEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -613,7 +614,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_SetOperatorEvent">SetOperatorEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_SetOperatorEvent">SetOperatorEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -652,7 +654,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_AddStakeEvent">AddStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -685,7 +688,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_ReactivateStakeEvent">ReactivateStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_ReactivateStakeEvent">ReactivateStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -718,7 +722,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_RotateConsensusKeyEvent">RotateConsensusKeyEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_RotateConsensusKeyEvent">RotateConsensusKeyEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -757,7 +762,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_UpdateNetworkAndFullnodeAddressesEvent">UpdateNetworkAndFullnodeAddressesEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_UpdateNetworkAndFullnodeAddressesEvent">UpdateNetworkAndFullnodeAddressesEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -808,7 +814,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_IncreaseLockupEvent">IncreaseLockupEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_IncreaseLockupEvent">IncreaseLockupEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -847,7 +854,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_JoinValidatorSetEvent">JoinValidatorSetEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_JoinValidatorSetEvent">JoinValidatorSetEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -874,7 +882,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_DistributeRewardsEvent">DistributeRewardsEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_DistributeRewardsEvent">DistributeRewardsEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -907,7 +916,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_UnlockStakeEvent">UnlockStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -940,7 +950,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_WithdrawStakeEvent">WithdrawStakeEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_WithdrawStakeEvent">WithdrawStakeEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -973,7 +984,8 @@ This allows the Stake module to mint rewards to stakers.
 
 
 
-<pre><code><b>struct</b> <a href="stake.md#0x1_stake_LeaveValidatorSetEvent">LeaveValidatorSetEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="stake.md#0x1_stake_LeaveValidatorSetEvent">LeaveValidatorSetEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -2174,8 +2186,7 @@ Allows an account with ownership capability to change the operator of the stake 
     <b>let</b> old_operator = stake_pool.operator_address;
     stake_pool.operator_address = new_operator;
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.set_operator_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_SetOperatorEvent">SetOperatorEvent</a> {
             pool_address,
             old_operator,
@@ -2322,8 +2333,7 @@ Add <code>coins</code> into <code>pool_address</code>. this requires the corresp
     <b>let</b> voting_power = <a href="stake.md#0x1_stake_get_next_epoch_voting_power">get_next_epoch_voting_power</a>(stake_pool);
     <b>assert</b>!(voting_power &lt;= maximum_stake, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="stake.md#0x1_stake_ESTAKE_EXCEEDS_MAX">ESTAKE_EXCEEDS_MAX</a>));
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.add_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_AddStakeEvent">AddStakeEvent</a> {
             pool_address,
             amount_added: amount,
@@ -2394,8 +2404,7 @@ Move <code>amount</code> of coins from pending_inactive to active.
     <b>let</b> reactivated_coins = <a href="coin.md#0x1_coin_extract">coin::extract</a>(&<b>mut</b> stake_pool.pending_inactive, amount);
     <a href="coin.md#0x1_coin_merge">coin::merge</a>(&<b>mut</b> stake_pool.active, reactivated_coins);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.reactivate_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_ReactivateStakeEvent">ReactivateStakeEvent</a> {
             pool_address,
             amount,
@@ -2446,8 +2455,7 @@ Move <code>amount</code> of coins from pending_inactive to active.
     };
     validator_info.consensus_pubkey = new_consensus_pubkey;
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.rotate_consensus_key_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_RotateConsensusKeyEvent">RotateConsensusKeyEvent</a> {
             pool_address,
             old_consensus_pubkey,
@@ -2554,8 +2562,7 @@ Update the network and full node addresses of the validator. This only takes eff
     <b>let</b> old_fullnode_addresses = validator_info.fullnode_addresses;
     validator_info.fullnode_addresses = new_fullnode_addresses;
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.update_network_and_fullnode_addresses_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_UpdateNetworkAndFullnodeAddressesEvent">UpdateNetworkAndFullnodeAddressesEvent</a> {
             pool_address,
             old_network_addresses,
@@ -2627,8 +2634,7 @@ directly inactive if it's not from an active validator.
     <b>assert</b>!(old_locked_until_secs &lt; new_locked_until_secs, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="stake.md#0x1_stake_EINVALID_LOCKUP">EINVALID_LOCKUP</a>));
     stake_pool.locked_until_secs = new_locked_until_secs;
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.increase_lockup_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_IncreaseLockupEvent">IncreaseLockupEvent</a> {
             pool_address,
             old_locked_until_secs,
@@ -2727,8 +2733,7 @@ This internal version can only be called by the Genesis module during Genesis.
     <b>let</b> validator_set_size = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&validator_set.active_validators) + <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&validator_set.pending_active);
     <b>assert</b>!(validator_set_size &lt;= <a href="stake.md#0x1_stake_MAX_VALIDATOR_SET_SIZE">MAX_VALIDATOR_SET_SIZE</a>, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="stake.md#0x1_stake_EVALIDATOR_SET_TOO_LARGE">EVALIDATOR_SET_TOO_LARGE</a>));
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.join_validator_set_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_JoinValidatorSetEvent">JoinValidatorSetEvent</a> { pool_address },
     );
 }
@@ -2798,8 +2803,7 @@ Unlock <code>amount</code> from the active stake. Only possible if the lockup ha
     <b>let</b> unlocked_stake = <a href="coin.md#0x1_coin_extract">coin::extract</a>(&<b>mut</b> stake_pool.active, amount);
     <a href="coin.md#0x1_coin_merge">coin::merge</a>&lt;SupraCoin&gt;(&<b>mut</b> stake_pool.pending_inactive, unlocked_stake);
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.unlock_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_UnlockStakeEvent">UnlockStakeEvent</a> {
             pool_address,
             amount_unlocked: amount,
@@ -2880,8 +2884,7 @@ Withdraw from <code>pool_address</code>'s inactive stake with the corresponding 
     withdraw_amount = <b>min</b>(withdraw_amount, <a href="coin.md#0x1_coin_value">coin::value</a>(&stake_pool.inactive));
     <b>if</b> (withdraw_amount == 0) <b>return</b> <a href="coin.md#0x1_coin_zero">coin::zero</a>&lt;SupraCoin&gt;();
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.withdraw_stake_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_WithdrawStakeEvent">WithdrawStakeEvent</a> {
             pool_address,
             amount_withdrawn: withdraw_amount,
@@ -2960,8 +2963,7 @@ Can only be called by the operator of the validator/staking pool.
         <b>assert</b>!(<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&validator_set.active_validators) &gt; 0, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_state">error::invalid_state</a>(<a href="stake.md#0x1_stake_ELAST_VALIDATOR">ELAST_VALIDATOR</a>));
         <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> validator_set.pending_inactive, validator_info);
 
-        <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-            &<b>mut</b> stake_pool.leave_validator_set_events,
+        <a href="event.md#0x1_event_emit">event::emit</a>(
             <a href="stake.md#0x1_stake_LeaveValidatorSetEvent">LeaveValidatorSetEvent</a> {
                 pool_address,
             },
@@ -3284,8 +3286,7 @@ This function shouldn't abort.
         );
     };
 
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(
-        &<b>mut</b> stake_pool.distribute_rewards_events,
+    <a href="event.md#0x1_event_emit">event::emit</a>(
         <a href="stake.md#0x1_stake_DistributeRewardsEvent">DistributeRewardsEvent</a> {
             pool_address,
             rewards_amount,
@@ -4923,6 +4924,76 @@ Returns validator's next epoch voting power, including pending_active, active, a
    !<a href="stake.md#0x1_stake_spec_contains">spec_contains</a>(validator_set.pending_active, pool_address)
        && (<a href="stake.md#0x1_stake_spec_contains">spec_contains</a>(validator_set.active_validators, pool_address)
        || <a href="stake.md#0x1_stake_spec_contains">spec_contains</a>(validator_set.pending_inactive, pool_address))
+}
+</code></pre>
+
+
+
+
+<a id="0x1_stake_ResourceRequirement"></a>
+
+
+<pre><code><b>schema</b> <a href="stake.md#0x1_stake_ResourceRequirement">ResourceRequirement</a> {
+    <b>requires</b> <b>exists</b>&lt;<a href="stake.md#0x1_stake_SupraCoinCapabilities">SupraCoinCapabilities</a>&gt;(@supra_framework);
+    <b>requires</b> <b>exists</b>&lt;<a href="stake.md#0x1_stake_ValidatorPerformance">ValidatorPerformance</a>&gt;(@supra_framework);
+    <b>requires</b> <b>exists</b>&lt;<a href="stake.md#0x1_stake_ValidatorSet">ValidatorSet</a>&gt;(@supra_framework);
+    <b>requires</b> <b>exists</b>&lt;StakingConfig&gt;(@supra_framework);
+    <b>requires</b> <b>exists</b>&lt;StakingRewardsConfig&gt;(@supra_framework) || !<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
+    <b>requires</b> <b>exists</b>&lt;<a href="timestamp.md#0x1_timestamp_CurrentTimeMicroseconds">timestamp::CurrentTimeMicroseconds</a>&gt;(@supra_framework);
+    <b>requires</b> <b>exists</b>&lt;<a href="stake.md#0x1_stake_ValidatorFees">ValidatorFees</a>&gt;(@supra_framework);
+}
+</code></pre>
+
+
+
+
+<a id="0x1_stake_spec_get_reward_rate_1"></a>
+
+
+<pre><code><b>fun</b> <a href="stake.md#0x1_stake_spec_get_reward_rate_1">spec_get_reward_rate_1</a>(config: StakingConfig): num {
+   <b>if</b> (<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>()) {
+       <b>let</b> epoch_rewards_rate = <b>global</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">staking_config::StakingRewardsConfig</a>&gt;(@supra_framework).rewards_rate;
+       <b>if</b> (epoch_rewards_rate.value == 0) {
+           0
+       } <b>else</b> {
+           <b>let</b> denominator_0 = aptos_std::fixed_point64::spec_divide_u128(<a href="staking_config.md#0x1_staking_config_MAX_REWARDS_RATE">staking_config::MAX_REWARDS_RATE</a>, epoch_rewards_rate);
+           <b>let</b> denominator = <b>if</b> (denominator_0 &gt; <a href="stake.md#0x1_stake_MAX_U64">MAX_U64</a>) {
+               <a href="stake.md#0x1_stake_MAX_U64">MAX_U64</a>
+           } <b>else</b> {
+               denominator_0
+           };
+           <b>let</b> nominator = aptos_std::fixed_point64::spec_multiply_u128(denominator, epoch_rewards_rate);
+           nominator
+       }
+   } <b>else</b> {
+           config.rewards_rate
+   }
+}
+</code></pre>
+
+
+
+
+<a id="0x1_stake_spec_get_reward_rate_2"></a>
+
+
+<pre><code><b>fun</b> <a href="stake.md#0x1_stake_spec_get_reward_rate_2">spec_get_reward_rate_2</a>(config: StakingConfig): num {
+   <b>if</b> (<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>()) {
+       <b>let</b> epoch_rewards_rate = <b>global</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">staking_config::StakingRewardsConfig</a>&gt;(@supra_framework).rewards_rate;
+       <b>if</b> (epoch_rewards_rate.value == 0) {
+           1
+       } <b>else</b> {
+           <b>let</b> denominator_0 = aptos_std::fixed_point64::spec_divide_u128(<a href="staking_config.md#0x1_staking_config_MAX_REWARDS_RATE">staking_config::MAX_REWARDS_RATE</a>, epoch_rewards_rate);
+           <b>let</b> denominator = <b>if</b> (denominator_0 &gt; <a href="stake.md#0x1_stake_MAX_U64">MAX_U64</a>) {
+               <a href="stake.md#0x1_stake_MAX_U64">MAX_U64</a>
+           } <b>else</b> {
+               denominator_0
+           };
+           denominator
+       }
+   } <b>else</b> {
+           config.rewards_rate_denominator
+   }
 }
 </code></pre>
 

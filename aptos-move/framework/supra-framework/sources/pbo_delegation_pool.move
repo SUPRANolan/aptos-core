@@ -341,6 +341,7 @@ module supra_framework::pbo_delegation_pool {
         effective_after_secs: u64,
     }
 
+	#[event]
     struct AddStakeEvent has drop, store {
         pool_address: address,
         delegator_address: address,
@@ -348,24 +349,28 @@ module supra_framework::pbo_delegation_pool {
         add_stake_fee: u64,
     }
 
+	#[event]
     struct ReactivateStakeEvent has drop, store {
         pool_address: address,
         delegator_address: address,
         amount_reactivated: u64,
     }
 
+	#[event]
     struct UnlockStakeEvent has drop, store {
         pool_address: address,
         delegator_address: address,
         amount_unlocked: u64,
     }
 
+	#[event]
     struct WithdrawStakeEvent has drop, store {
         pool_address: address,
         delegator_address: address,
         amount_withdrawn: u64,
     }
 
+	#[event]
     struct DistributeCommissionEvent has drop, store {
         pool_address: address,
         operator: address,
@@ -382,6 +387,7 @@ module supra_framework::pbo_delegation_pool {
         commission_pending_inactive: u64,
     }
 
+	#[event]
     struct VoteEvent has drop, store {
         voter: address,
         proposal_id: u64,
@@ -390,12 +396,14 @@ module supra_framework::pbo_delegation_pool {
         should_pass: bool,
     }
 
+	#[event]
     struct CreateProposalEvent has drop, store {
         proposal_id: u64,
         voter: address,
         delegation_pool: address,
     }
 
+	#[event]
     struct DelegateVotingPowerEvent has drop, store {
         pool_address: address,
         delegator: address,
@@ -831,8 +839,7 @@ module supra_framework::pbo_delegation_pool {
         let pool_signer = retrieve_stake_pool_owner(borrow_global<DelegationPool>(pool_address));
         supra_governance::partial_vote(&pool_signer, pool_address, proposal_id, voting_power, should_pass);
 
-        event::emit_event(
-            &mut governance_records.vote_events,
+        event::emit(
             VoteEvent {
                 voter: voter_address,
                 proposal_id,
@@ -877,8 +884,7 @@ module supra_framework::pbo_delegation_pool {
         );
 
         let governance_records = borrow_global_mut<GovernanceRecords>(pool_address);
-        event::emit_event(
-            &mut governance_records.create_proposal_events,
+        event::emit(
             CreateProposalEvent {
                 proposal_id,
                 voter: voter_addr,
@@ -1235,7 +1241,7 @@ module supra_framework::pbo_delegation_pool {
                 new_delegated_votes.active_shares_next_lockup + active_shares;
         };
 
-        event::emit_event(&mut governance_records.delegate_voting_power_events, DelegateVotingPowerEvent {
+        event::emit( DelegateVotingPowerEvent {
             pool_address,
             delegator: delegator_address,
             voter: new_voter,
@@ -1284,8 +1290,7 @@ module supra_framework::pbo_delegation_pool {
         // in order to appreciate all shares on the active pool atomically
         buy_in_active_shares(pool, NULL_SHAREHOLDER, add_stake_fee);
 
-        event::emit_event(
-            &mut pool.add_stake_events,
+        event::emit(
             AddStakeEvent {
                 pool_address,
                 delegator_address,
@@ -1325,8 +1330,7 @@ module supra_framework::pbo_delegation_pool {
         buy_in_pending_inactive_shares(pool, delegator_address, amount);
         assert_min_pending_inactive_balance(pool, delegator_address);
 
-        event::emit_event(
-            &mut pool.unlock_stake_events,
+        event::emit(
             UnlockStakeEvent {
                 pool_address,
                 delegator_address,
@@ -1361,8 +1365,7 @@ module supra_framework::pbo_delegation_pool {
         buy_in_active_shares(pool, delegator_address, amount);
         assert_min_active_balance(pool, delegator_address);
 
-        event::emit_event(
-            &mut pool.reactivate_stake_events,
+        event::emit(
             ReactivateStakeEvent {
                 pool_address,
                 delegator_address,
@@ -1428,8 +1431,7 @@ module supra_framework::pbo_delegation_pool {
         let (_, inactive, _, _) = stake::get_stake(pool_address);
         pool.total_coins_inactive = inactive;
 
-        event::emit_event(
-            &mut pool.withdraw_stake_events,
+        event::emit(
             WithdrawStakeEvent {
                 pool_address,
                 delegator_address,
@@ -1705,8 +1707,7 @@ module supra_framework::pbo_delegation_pool {
         // reward operator its commission out of uncommitted pending_inactive rewards
         buy_in_pending_inactive_shares(pool, beneficiary_for_operator(stake::get_operator(pool_address)), commission_pending_inactive);
 
-        event::emit_event(
-            &mut pool.distribute_commission_events,
+        event::emit(
             DistributeCommissionEvent {
                 pool_address,
                 operator: stake::get_operator(pool_address),

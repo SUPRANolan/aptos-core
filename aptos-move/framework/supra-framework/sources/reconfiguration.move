@@ -22,6 +22,7 @@ module supra_framework::reconfiguration {
     friend supra_framework::genesis;
     friend supra_framework::version;
 
+	#[event]
     /// Event that signals consensus to start a new epoch,
     /// with new configuration information. This is also called a
     /// "reconfiguration event"
@@ -143,8 +144,7 @@ module supra_framework::reconfiguration {
         };
         config_ref.epoch = config_ref.epoch + 1;
 
-        event::emit_event<NewEpochEvent>(
-            &mut config_ref.events,
+        event::emit<NewEpochEvent>(
             NewEpochEvent {
                 epoch: config_ref.epoch,
             },
@@ -166,8 +166,7 @@ module supra_framework::reconfiguration {
         assert!(config_ref.epoch == 0 && config_ref.last_reconfiguration_time == 0, error::invalid_state(ECONFIGURATION));
         config_ref.epoch = 1;
 
-        event::emit_event<NewEpochEvent>(
-            &mut config_ref.events,
+        event::emit<NewEpochEvent>(
             NewEpochEvent {
                 epoch: config_ref.epoch,
             },

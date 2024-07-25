@@ -156,6 +156,7 @@ module supra_framework::object {
         self: address,
     }
 
+	#[event]
     /// Emitted whenever the object's owner field is changed.
     struct TransferEvent has drop, store {
         object: address,
@@ -431,8 +432,7 @@ module supra_framework::object {
             object.owner == ref.owner,
             error::permission_denied(ENOT_OBJECT_OWNER),
         );
-        event::emit_event(
-            &mut object.transfer_events,
+        event::emit(
             TransferEvent {
                 object: ref.self,
                 from: object.owner,
@@ -478,8 +478,7 @@ module supra_framework::object {
     inline fun transfer_raw_inner(object: address, to: address) acquires ObjectCore {
         let object_core = borrow_global_mut<ObjectCore>(object);
         if (object_core.owner != to) {
-            event::emit_event(
-                &mut object_core.transfer_events,
+            event::emit(
                 TransferEvent {
                     object,
                     from: object_core.owner,
@@ -675,8 +674,7 @@ module supra_framework::object {
         transfer_to_object(owner, weapon, hero);
         let hero_obj = borrow_global_mut<Hero>(object_address(&hero));
         option::fill(&mut hero_obj.weapon, weapon);
-        event::emit_event(
-            &mut hero_obj.equip_events,
+        event::emit(
             HeroEquipEvent { weapon_id: option::some(weapon) },
         );
     }
@@ -690,8 +688,7 @@ module supra_framework::object {
         transfer(owner, weapon, signer::address_of(owner));
         let hero = borrow_global_mut<Hero>(object_address(&hero));
         option::extract(&mut hero.weapon);
-        event::emit_event(
-            &mut hero.equip_events,
+        event::emit(
             HeroEquipEvent { weapon_id: option::none() },
         );
     }

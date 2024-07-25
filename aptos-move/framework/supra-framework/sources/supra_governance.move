@@ -111,6 +111,7 @@ module supra_framework::supra_governance {
         vote_events: EventHandle<VoteEvent>,
     }
 
+	#[event]
     /// Event emitted when a proposal is created.
     struct CreateProposalEvent has drop, store {
         proposer: address,
@@ -120,6 +121,7 @@ module supra_framework::supra_governance {
         proposal_metadata: SimpleMap<String, vector<u8>>,
     }
 
+	#[event]
     /// Event emitted when there's a vote on a proposa;
     struct VoteEvent has drop, store {
         proposal_id: u64,
@@ -129,6 +131,7 @@ module supra_framework::supra_governance {
         should_pass: bool,
     }
 
+	#[event]
     /// Event emitted when the governance configs are updated.
     struct UpdateConfigEvent has drop, store {
         min_voting_threshold: u128,
@@ -199,9 +202,8 @@ module supra_framework::supra_governance {
         governance_config.min_voting_threshold = min_voting_threshold;
         governance_config.required_proposer_stake = required_proposer_stake;
 
-        let events = borrow_global_mut<GovernanceEvents>(@supra_framework);
-        event::emit_event<UpdateConfigEvent>(
-            &mut events.update_config_events,
+        let _ = borrow_global_mut<GovernanceEvents>(@supra_framework);
+        event::emit<UpdateConfigEvent>(
             UpdateConfigEvent {
                 min_voting_threshold,
                 required_proposer_stake,
@@ -366,9 +368,8 @@ module supra_framework::supra_governance {
             is_multi_step_proposal,
         );
 
-        let events = borrow_global_mut<GovernanceEvents>(@supra_framework);
-        event::emit_event<CreateProposalEvent>(
-            &mut events.create_proposal_events,
+        let _ = borrow_global_mut<GovernanceEvents>(@supra_framework);
+        event::emit<CreateProposalEvent>(
             CreateProposalEvent {
                 proposal_id,
                 proposer: proposer_address,
@@ -455,9 +456,8 @@ module supra_framework::supra_governance {
             table::add(&mut voting_records.votes, record_key, true);
         };
 
-        let events = borrow_global_mut<GovernanceEvents>(@supra_framework);
-        event::emit_event<VoteEvent>(
-            &mut events.vote_events,
+        let _ = borrow_global_mut<GovernanceEvents>(@supra_framework);
+        event::emit<VoteEvent>(
             VoteEvent {
                 proposal_id,
                 voter: voter_address,

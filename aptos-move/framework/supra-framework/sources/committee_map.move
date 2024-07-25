@@ -12,7 +12,7 @@ module supra_framework::committee_map {
     use std::signer;
     use std::vector;
     use aptos_std::capability;
-    use supra_framework::event::{emit_event, EventHandle};
+    use supra_framework::event::{emit, EventHandle};
     use aptos_std::simple_map::{Self, SimpleMap};
     use supra_framework::account::{Self, new_event_handle};
 
@@ -90,43 +90,51 @@ module supra_framework::committee_map {
         rpc_port: u16
     }
 
+	#[event]
     struct AddCommitteeEvent has store, drop {
         committee_id: u64,
         committee_info: CommitteeInfo
     }
 
+	#[event]
     struct RemoveCommitteeEvent has store, drop {
         committee_id: u64,
         committee_info: CommitteeInfo
     }
 
+	#[event]
     struct UpdateCommitteeEvent has store, drop {
         committee_id: u64,
         old_committee_info: CommitteeInfo,
         new_committee_info: CommitteeInfo
     }
 
+	#[event]
     struct AddCommitteeMemberEvent has store, drop {
         committee_id: u64,
         committee_member: NodeInfo
     }
 
+	#[event]
     struct RemoveCommitteeMemberEvent has store, drop {
         committee_id: u64,
         committee_member: NodeInfo
     }
 
+	#[event]
     struct UpdateNodeInfoEvent has store, drop {
         committee_id: u64,
         old_node_info: NodeInfo,
         new_node_info: NodeInfo
     }
 
+	#[event]
     struct CreateCommitteeInfoStoreEvent has store, drop {
         committee_id: u64,
         committee_info: CommitteeInfo
     }
 
+	#[event]
     struct UpdateDkgFlagEvent has store, drop {
         committee_id: u64,
         flag_value: bool
@@ -309,8 +317,7 @@ module supra_framework::committee_map {
         let committee = simple_map::borrow_mut(&mut committee_store.committee_map, &com_id);
         committee.has_valid_dkg = flag_value;
         let event_handler = borrow_global_mut<SupraCommitteeEventHandler>(get_committeeInfo_address(owner_signer));
-        emit_event(
-            &mut event_handler.update_dkg_flag,
+        emit(
             UpdateDkgFlagEvent {
                 committee_id: com_id,
                 flag_value
@@ -392,15 +399,13 @@ module supra_framework::committee_map {
         let event_handler = borrow_global_mut<SupraCommitteeEventHandler>(get_committeeInfo_address(owner_signer));
         let (_, value) = simple_map::upsert(&mut committee_store.committee_map, id, committee_info);
         if (option::is_none(&value)) {
-            emit_event(
-                &mut event_handler.add_committee,
+            emit(
                 AddCommitteeEvent {
                     committee_id: id,
                     committee_info: copy committee_info
                 }, )
         } else {
-            emit_event(
-                &mut event_handler.update_committee,
+            emit(
                 UpdateCommitteeEvent {
                     committee_id: id,
                     old_committee_info: option::destroy_some(value),
@@ -508,8 +513,7 @@ module supra_framework::committee_map {
             simple_map::remove(&mut committee_store.node_to_committee_map, &addr);
         };
         let event_handler = borrow_global_mut<SupraCommitteeEventHandler>(get_committeeInfo_address(owner_signer));
-        emit_event(
-            &mut event_handler.remove_committee,
+        emit(
             RemoveCommitteeEvent {
                 committee_id: id,
                 committee_info: committee_info
@@ -556,15 +560,13 @@ module supra_framework::committee_map {
         };
         let event_handler = borrow_global_mut<SupraCommitteeEventHandler>(get_committeeInfo_address(owner_signer));
         if (!does_node_exist(committee, node_address)) {
-            emit_event(
-                &mut event_handler.add_committee_member,
+            emit(
                 AddCommitteeMemberEvent {
                     committee_id: id,
                     committee_member: node_info
                 })
         } else {
-            emit_event(
-                &mut event_handler.update_node_info,
+            emit(
                 UpdateNodeInfoEvent {
                     committee_id: id,
                     old_node_info: *simple_map::borrow(&committee.map, &node_address),
@@ -657,8 +659,7 @@ module supra_framework::committee_map {
         ensure_node_address_exist(committee, node_address);
         let (_, node_info) = simple_map::remove(&mut committee.map, &node_address);
         let event_handler = borrow_global_mut<SupraCommitteeEventHandler>(get_committeeInfo_address(owner_signer));
-        emit_event(
-            &mut event_handler.remove_committee_member,
+        emit(
             RemoveCommitteeMemberEvent {
                 committee_id: id,
                 committee_member: NodeInfo {

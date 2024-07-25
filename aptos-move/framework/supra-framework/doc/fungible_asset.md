@@ -408,7 +408,8 @@ BurnRef can be used to burn fungible assets from a given holder account.
 Emitted when fungible assets are deposited into a store.
 
 
-<pre><code><b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_DepositEvent">DepositEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_DepositEvent">DepositEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -436,7 +437,8 @@ Emitted when fungible assets are deposited into a store.
 Emitted when fungible assets are withdrawn from a store.
 
 
-<pre><code><b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_WithdrawEvent">WithdrawEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_WithdrawEvent">WithdrawEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -464,7 +466,8 @@ Emitted when fungible assets are withdrawn from a store.
 Emitted when a store's frozen status is updated.
 
 
-<pre><code><b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_FrozenEvent">FrozenEvent</a> <b>has</b> drop, store
+<pre><code>#[<a href="event.md#0x1_event">event</a>]
+<b>struct</b> <a href="fungible_asset.md#0x1_fungible_asset_FrozenEvent">FrozenEvent</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -1579,7 +1582,7 @@ Enable/disable a store's ability to do direct transfers of the fungible asset.
     <b>borrow_global_mut</b>&lt;<a href="fungible_asset.md#0x1_fungible_asset_FungibleStore">FungibleStore</a>&gt;(store_addr).frozen = frozen;
 
     <b>let</b> events = <b>borrow_global_mut</b>&lt;<a href="fungible_asset.md#0x1_fungible_asset_FungibleAssetEvents">FungibleAssetEvents</a>&gt;(store_addr);
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(&<b>mut</b> events.frozen_events, <a href="fungible_asset.md#0x1_fungible_asset_FrozenEvent">FrozenEvent</a> { frozen });
+    <a href="event.md#0x1_event_emit">event::emit</a>( <a href="fungible_asset.md#0x1_fungible_asset_FrozenEvent">FrozenEvent</a> { frozen });
 }
 </code></pre>
 
@@ -1885,7 +1888,7 @@ Destroy an empty fungible asset.
     store.balance = store.balance + amount;
 
     <b>let</b> events = <b>borrow_global_mut</b>&lt;<a href="fungible_asset.md#0x1_fungible_asset_FungibleAssetEvents">FungibleAssetEvents</a>&gt;(store_addr);
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(&<b>mut</b> events.deposit_events, <a href="fungible_asset.md#0x1_fungible_asset_DepositEvent">DepositEvent</a> { amount });
+    <a href="event.md#0x1_event_emit">event::emit</a>( <a href="fungible_asset.md#0x1_fungible_asset_DepositEvent">DepositEvent</a> { amount });
 }
 </code></pre>
 
@@ -1920,7 +1923,7 @@ Extract <code>amount</code> of the fungible asset from <code>store</code>.
 
     <b>let</b> events = <b>borrow_global_mut</b>&lt;<a href="fungible_asset.md#0x1_fungible_asset_FungibleAssetEvents">FungibleAssetEvents</a>&gt;(store_addr);
     <b>let</b> metadata = store.metadata;
-    <a href="event.md#0x1_event_emit_event">event::emit_event</a>(&<b>mut</b> events.withdraw_events, <a href="fungible_asset.md#0x1_fungible_asset_WithdrawEvent">WithdrawEvent</a> { amount });
+    <a href="event.md#0x1_event_emit">event::emit</a>( <a href="fungible_asset.md#0x1_fungible_asset_WithdrawEvent">WithdrawEvent</a> { amount });
 
     <a href="fungible_asset.md#0x1_fungible_asset_FungibleAsset">FungibleAsset</a> { metadata, amount }
 }

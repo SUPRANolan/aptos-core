@@ -119,6 +119,7 @@ module supra_framework::coin {
         supply: Option<OptionalAggregator>,
     }
 
+    #[event]
     /// Event emitted when some amount of a coin is deposited into an account.
     struct CoinDeposit has drop, store {
 		coin_type: String,
@@ -126,6 +127,7 @@ module supra_framework::coin {
         amount: u64,
     }
 
+    #[event]
     /// Event emitted when some amount of a coin is withdrawn from an account.
     struct CoinWithdraw has drop, store {
 		coin_type: String,
@@ -362,8 +364,7 @@ module supra_framework::coin {
             error::permission_denied(EFROZEN),
         );
 
-        event::emit_event<CoinDeposit>(
-            &mut coin_store.deposit_events,
+        event::emit<CoinDeposit>(
             CoinDeposit { coin_type: type_name<CoinType>(), account: account_addr, amount: coin.value, },
         );
 
@@ -671,8 +672,7 @@ module supra_framework::coin {
             error::permission_denied(EFROZEN),
         );
 
-        event::emit_event<CoinWithdraw>(
-            &mut coin_store.withdraw_events,
+        event::emit<CoinWithdraw>(
             CoinWithdraw { coin_type: type_name<CoinType>(), account: account_addr, amount },
         );
 
