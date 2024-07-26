@@ -1895,7 +1895,7 @@ module supra_framework::pbo_delegation_pool {
         initialize_for_test_custom(
             supra_framework,
             100 * ONE_APT,
-            10000000 * ONE_APT,
+            100000000000 * ONE_APT,
             LOCKUP_CYCLE_SECONDS,
             true,
             1,
@@ -4783,8 +4783,8 @@ module supra_framework::pbo_delegation_pool {
     ) acquires DelegationPoolOwnership, DelegationPool, GovernanceRecords, BeneficiaryForOperator, NextCommissionPercentage {
         initialize_for_test(supra_framework);
         let delegator_address = vector[@0x010, @0x020];
-        let principle_stake = vector[ONE_APT, 1010 * ONE_APT];
-        let coin = stake::mint_coins(1011 * ONE_APT);
+        let principle_stake = vector[ONE_APT, 90000000000 * ONE_APT];
+        let coin = stake::mint_coins(90000000001 * ONE_APT);
         let principle_lockup_time = 0;
         initialize_test_validator(validator, 100*ONE_APT, true, true, delegator_address, principle_stake, coin, principle_lockup_time);
         let validator_address = signer::address_of(validator);
@@ -4802,22 +4802,22 @@ module supra_framework::pbo_delegation_pool {
             fixed_point64::create_from_rational(0, 100),
         );
         let index = 0;
-        while (index < 1828) {
+        while (index < 10) {
             end_aptos_epoch();
             index = index + 1;
         };
         let delegator1_address = signer::address_of(delegator1);
         let delegator2_address = signer::address_of(delegator2);
-        assert_delegation(delegator1_address, pool_address, 7933617798100577, 0, 0);
-        stake::assert_stake_pool(pool_address,9992509442753070175,0,0,0);
+        assert_delegation(delegator1_address, pool_address, 110462212, 0, 0);
+        stake::assert_stake_pool(pool_address,9941599156262803145,0,0,0);
         unlock(delegator1, pool_address, 1 * ONE_APT);
-        assert_delegation(delegator1_address, pool_address, 7933617698100576, 0, 100000000);
-        stake::assert_stake_pool(pool_address,9992509442653070175,0,0,100000000);
+        assert_delegation(delegator1_address, pool_address, 0, 0, 110462212);
+        stake::assert_stake_pool(pool_address,9941599156152340933,0,0,110462212);
         unlock(delegator1, pool_address, 1 * ONE_APT);
-        stake::assert_stake_pool(pool_address,9992509442553070176,0,0,199999999);
-        assert_delegation(delegator1_address, pool_address, 7933617598100576, 0, 199999999);
-        assert_delegation(delegator2_address, pool_address, 8012953976081583678, 0, 0);
-        unlock(delegator2, pool_address, 1000 * ONE_APT);
-        assert_delegation(delegator2_address, pool_address, 8012953876081583679, 0, 99999999999);
+        stake::assert_stake_pool(pool_address,9941599156152340933,0,0,110462212);
+        assert_delegation(delegator1_address, pool_address, 0, 0, 110462212);
+        assert_delegation(delegator2_address, pool_address, 9941599128700840588, 0, 0);
+        unlock(delegator2, pool_address, 1 * ONE_APT);
+        assert_delegation(delegator2_address, pool_address, 9941599128600840588, 0, 100000000);
     }
 }
