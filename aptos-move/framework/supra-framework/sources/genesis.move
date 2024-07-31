@@ -619,6 +619,8 @@ module supra_framework::genesis {
     /// The last step of genesis.
     fun set_genesis_end(supra_framework: &signer) {
         chain_status::set_genesis_end(supra_framework);
+
+        stake::on_new_epoch();
     }
 
     #[verify_only]
