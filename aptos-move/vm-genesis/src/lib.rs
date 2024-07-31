@@ -202,6 +202,8 @@ pub fn encode_aptos_mainnet_genesis_transaction(
 pub fn encode_genesis_transaction(
     aptos_root_key: Ed25519PublicKey,
     validators: &[Validator],
+    delegation_pools: &[PboDelegatorConfiguration],
+    vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
@@ -212,6 +214,8 @@ pub fn encode_genesis_transaction(
     Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set(
         &aptos_root_key,
         validators,
+        delegation_pools,
+        vesting_pools,
         framework,
         chain_id,
         genesis_config,
@@ -224,6 +228,8 @@ pub fn encode_genesis_transaction(
 pub fn encode_genesis_change_set(
     core_resources_key: &Ed25519PublicKey,
     validators: &[Validator],
+    delegation_pools: &[PboDelegatorConfiguration],
+    vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
@@ -276,7 +282,17 @@ pub fn encode_genesis_change_set(
     initialize_randomness_config(&mut session, randomness_config);
     initialize_randomness_resources(&mut session);
     initialize_on_chain_governance(&mut session, genesis_config);
-    create_and_initialize_validators(&mut session, validators);
+
+    if validators.len() > 0 {
+        create_and_initialize_validators(&mut session, validators);
+    } else {
+        // All PBO delegated validators are initialized here
+        create_pbo_delegation_pools(&mut session, delegation_pools);
+
+        // All employee accounts are initialized here
+        create_vesting_without_staking_pools(&mut session, vesting_pools);
+    }
+
     if genesis_config.is_test {
         allow_core_resources_to_set_version(&mut session);
     }
@@ -989,6 +1005,8 @@ pub fn generate_test_genesis(
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
         validators,
+        &[],
+        &[],
         framework,
         ChainId::test(),
         &GenesisConfiguration {
@@ -1029,6 +1047,8 @@ pub fn generate_mainnet_genesis(
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
         validators,
+        &[],
+        &[],
         framework,
         ChainId::test(),
         &mainnet_genesis_config(),
