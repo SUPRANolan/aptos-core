@@ -460,7 +460,7 @@ module supra_framework::supra_governance {
         stake_pools: vector<address>,
         proposal_id: u64,
         should_pass: bool,
-    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents, GovernanceConfig {
         vector::for_each(stake_pools, |stake_pool| {
             vote_internal(voter, stake_pool, proposal_id, MAX_U64, should_pass);
         });
@@ -473,7 +473,7 @@ module supra_framework::supra_governance {
         proposal_id: u64,
         voting_power: u64,
         should_pass: bool,
-    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents, GovernanceConfig {
         vector::for_each(stake_pools, |stake_pool| {
             vote_internal(voter, stake_pool, proposal_id, voting_power, should_pass);
         });
@@ -485,7 +485,7 @@ module supra_framework::supra_governance {
         stake_pool: address,
         proposal_id: u64,
         should_pass: bool,
-    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents, GovernanceConfig {
         vote_internal(voter, stake_pool, proposal_id, MAX_U64, should_pass);
     }
 
@@ -496,7 +496,7 @@ module supra_framework::supra_governance {
         proposal_id: u64,
         voting_power: u64,
         should_pass: bool,
-    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents, GovernanceConfig {
         vote_internal(voter, stake_pool, proposal_id, voting_power, should_pass);
     }
 
@@ -510,7 +510,11 @@ module supra_framework::supra_governance {
         proposal_id: u64,
         voting_power: u64,
         should_pass: bool,
-    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents, GovernanceConfig {
+        // check if the voter is one the owners address of the multisig account
+        let multisig_account_owners = borrow_global<GovernanceConfig>(@supra_framework).multisig_account_owners;
+        let voter_address = signer::address_of(voter);
+        assert!(vector::contains(&multisig_account_owners, &voter_address), 0);
         let voter_address = signer::address_of(voter);
         // assert!(stake::get_delegated_voter(stake_pool) == voter_address, error::invalid_argument(ENOT_DELEGATED_VOTER));
 
