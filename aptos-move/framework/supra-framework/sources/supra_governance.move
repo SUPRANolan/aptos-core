@@ -21,6 +21,7 @@ module supra_framework::supra_governance {
     use aptos_std::simple_map::{Self, SimpleMap};
     use aptos_std::smart_table::{Self, SmartTable};
     use aptos_std::table::{Self, Table};
+    use supra_framework::multisig_account;
 
     use supra_framework::account::{Self, SignerCapability, create_signer_with_capability};
     use supra_framework::coin;
@@ -83,6 +84,7 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+        multisig_account_owners: vector<address>,
     }
 
     struct RecordKey has copy, drop, store {
@@ -192,6 +194,7 @@ module supra_framework::supra_governance {
     /// This function is private because it's called directly from the vm.
     fun initialize(
         supra_framework: &signer,
+        multisig_account_address: address,
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
@@ -199,8 +202,10 @@ module supra_framework::supra_governance {
         system_addresses::assert_supra_framework(supra_framework);
 
         voting::register<GovernanceProposal>(supra_framework);
+        let multisig_account_owners = multisig_account::owners(multisig_account_address);
         move_to(supra_framework, GovernanceConfig {
             voting_duration_secs,
+            multisig_account_owners,
             min_voting_threshold,
             required_proposer_stake,
         });
@@ -802,13 +807,14 @@ module supra_framework::supra_governance {
     #[test_only]
     public entry fun test_voting_generic(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
         multi_step: bool,
         use_generic_resolve_function: bool,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &yes_voter, &no_voter);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &yes_voter, &no_voter);
 
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
@@ -849,53 +855,58 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_voting(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, false, false);
+        test_voting_generic(supra_framework, multisig_account_address, proposer, yes_voter, no_voter, false, false);
     }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_voting_multi_step(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, true, true);
+        test_voting_generic(supra_framework, multisig_account_address, proposer, yes_voter, no_voter, true, true);
     }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     #[expected_failure(abort_code = 0x5000a, location = supra_framework::voting)]
     public entry fun test_voting_multi_step_cannot_use_single_step_resolve(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, true, false);
+        test_voting_generic(supra_framework, multisig_account_address, proposer, yes_voter, no_voter, true, false);
     }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_voting_single_step_can_use_generic_resolve_function(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, false, true);
+        test_voting_generic(supra_framework, multisig_account_address, proposer, yes_voter, no_voter, false, true);
     }
 
     #[test_only]
     public entry fun test_can_remove_approved_hash_if_executed_directly_via_voting_generic(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
         multi_step: bool,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &yes_voter, &no_voter);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &yes_voter, &no_voter);
 
         create_proposal_for_test(&proposer, multi_step);
         vote(&yes_voter, signer::address_of(&yes_voter), 0, true);
@@ -929,12 +940,14 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_can_remove_approved_hash_if_executed_directly_via_voting(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
         test_can_remove_approved_hash_if_executed_directly_via_voting_generic(
             supra_framework,
+            multisig_account_address,
             proposer,
             yes_voter,
             no_voter,
@@ -945,12 +958,14 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_can_remove_approved_hash_if_executed_directly_via_voting_multi_step(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
         test_can_remove_approved_hash_if_executed_directly_via_voting_generic(
             supra_framework,
+            multisig_account_address,
             proposer,
             yes_voter,
             no_voter,
@@ -962,11 +977,12 @@ module supra_framework::supra_governance {
     #[expected_failure(abort_code = 0x10004, location = supra_framework::voting)]
     public entry fun test_cannot_double_vote(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
 
         create_proposal(
             &proposer,
@@ -985,11 +1001,12 @@ module supra_framework::supra_governance {
     #[expected_failure(abort_code = 0x10004, location = supra_framework::voting)]
     public entry fun test_cannot_double_vote_with_different_voter_addresses(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
 
         create_proposal(
             &proposer,
@@ -1008,11 +1025,12 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_stake_pool_can_vote_on_partial_voting_proposal_many_times(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_partial_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_partial_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let proposer_addr = signer::address_of(&proposer);
@@ -1036,11 +1054,12 @@ module supra_framework::supra_governance {
     #[expected_failure(abort_code = 0x3, location = Self)]
     public entry fun test_stake_pool_can_vote_with_partial_voting_power(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_partial_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_partial_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let proposer_addr = signer::address_of(&proposer);
@@ -1062,12 +1081,13 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_batch_vote(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
         features::change_feature_flags_for_testing(&supra_framework, vector[features::get_coin_to_fungible_asset_migration_feature()], vector[]);
-        setup_partial_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_partial_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let voter_1_addr = signer::address_of(&voter_1);
@@ -1081,12 +1101,13 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_batch_partial_vote(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
         features::change_feature_flags_for_testing(&supra_framework, vector[features::get_coin_to_fungible_asset_migration_feature()], vector[]);
-        setup_partial_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_partial_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let voter_1_addr = signer::address_of(&voter_1);
@@ -1100,11 +1121,12 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_stake_pool_can_vote_only_with_its_own_voting_power(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_partial_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_partial_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let proposer_addr = signer::address_of(&proposer);
@@ -1127,11 +1149,12 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_stake_pool_can_vote_before_and_after_partial_governance_voting_enabled(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let proposer_addr = signer::address_of(&proposer);
@@ -1164,11 +1187,12 @@ module supra_framework::supra_governance {
     #[test(supra_framework = @supra_framework, proposer = @0x123, voter_1 = @0x234, voter_2 = @345)]
     public entry fun test_no_remaining_voting_power_about_proposal_expiration_time(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         voter_1: signer,
         voter_2: signer,
     ) acquires GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting_with_initialized_stake(&supra_framework, &proposer, &voter_1, &voter_2);
+        setup_voting_with_initialized_stake(&supra_framework, multisig_account_address, &proposer, &voter_1, &voter_2);
         let execution_hash = vector::empty<u8>();
         vector::push_back(&mut execution_hash, 1);
         let proposer_addr = signer::address_of(&proposer);
@@ -1198,6 +1222,7 @@ module supra_framework::supra_governance {
     #[test_only]
     public fun setup_voting(
         supra_framework: &signer,
+        multisig_account_address: address,
         proposer: &signer,
         yes_voter: &signer,
         no_voter: &signer,
@@ -1215,7 +1240,7 @@ module supra_framework::supra_governance {
 
         // Initialize the governance.
         staking_config::initialize_for_test(supra_framework, 0, 1000, 2000, true, 0, 1, 100);
-        initialize(supra_framework, 10, 100, 1000);
+        initialize(supra_framework, multisig_account_address, 10, 100, 1000);
         store_signer_cap(
             supra_framework,
             @supra_framework,
@@ -1252,6 +1277,7 @@ module supra_framework::supra_governance {
     #[test_only]
     public fun setup_voting_with_initialized_stake(
         supra_framework: &signer,
+        multisig_account_address: address,
         proposer: &signer,
         yes_voter: &signer,
         no_voter: &signer,
@@ -1268,7 +1294,7 @@ module supra_framework::supra_governance {
 
         // Initialize the governance.
         stake::initialize_for_test_custom(supra_framework, 0, 1000, 2000, true, 0, 1, 1000);
-        initialize(supra_framework, 10, 100, 1000);
+        initialize(supra_framework, multisig_account_address, 10, 100, 1000);
         store_signer_cap(
             supra_framework,
             @supra_framework,
@@ -1299,21 +1325,23 @@ module supra_framework::supra_governance {
     #[test_only]
     public fun setup_partial_voting(
         supra_framework: &signer,
+        multisig_account_address: address,
         proposer: &signer,
         voter_1: &signer,
         voter_2: &signer,
     ) acquires GovernanceResponsbility {
         initialize_partial_voting(supra_framework);
         features::change_feature_flags_for_testing(supra_framework, vector[features::get_partial_governance_voting()], vector[]);
-        setup_voting(supra_framework, proposer, voter_1, voter_2);
+        setup_voting(supra_framework, multisig_account_address, proposer, voter_1, voter_2);
     }
 
     #[test(supra_framework = @supra_framework)]
     public entry fun test_update_governance_config(
         supra_framework: signer,
+        multisig_account_address: address,
     ) acquires GovernanceConfig, GovernanceEvents {
         account::create_account_for_test(signer::address_of(&supra_framework));
-        initialize(&supra_framework, 1, 2, 3);
+        initialize(&supra_framework, multisig_account_address, 1, 2, 3);
         update_governance_config(&supra_framework, 10, 20, 30);
 
         let config = borrow_global<GovernanceConfig>(@supra_framework);
@@ -1325,19 +1353,20 @@ module supra_framework::supra_governance {
     #[test(account = @0x123)]
     #[expected_failure(abort_code = 0x50003, location = supra_framework::system_addresses)]
     public entry fun test_update_governance_config_unauthorized_should_fail(
-        account: signer) acquires GovernanceConfig, GovernanceEvents {
-        initialize(&account, 1, 2, 3);
+        account: signer, multisig_account_address: address) acquires GovernanceConfig, GovernanceEvents {
+        initialize(&account, multisig_account_address, 1, 2, 3);
         update_governance_config(&account, 10, 20, 30);
     }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_replace_execution_hash(
         supra_framework: signer,
+        multisig_account_address: address,
         proposer: signer,
         yes_voter: signer,
         no_voter: signer,
     ) acquires GovernanceResponsbility, GovernanceConfig, ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        setup_voting(&supra_framework, &proposer, &yes_voter, &no_voter);
+        setup_voting(&supra_framework, multisig_account_address, &proposer, &yes_voter, &no_voter);
 
         create_proposal_for_test(&proposer, true);
         vote(&yes_voter, signer::address_of(&yes_voter), 0, true);
@@ -1368,20 +1397,22 @@ module supra_framework::supra_governance {
     #[test_only]
     public fun initialize_for_test(
         supra_framework: &signer,
+        multisig_account_address: address,
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
     ) {
-        initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        initialize(supra_framework, multisig_account_address, min_voting_threshold, required_proposer_stake, voting_duration_secs);
     }
 
     #[verify_only]
     public fun initialize_for_verification(
         supra_framework: &signer,
+        multisig_account_address: address,
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
     ) {
-        initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        initialize(supra_framework, multisig_account_address, min_voting_threshold, required_proposer_stake, voting_duration_secs);
     }
 }

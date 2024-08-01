@@ -54,6 +54,7 @@ spec supra_framework::supra_governance {
     /// Limit addition overflow.
     spec initialize(
         supra_framework: &signer,
+        multisig_account_address: address,
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
@@ -745,6 +746,7 @@ spec supra_framework::supra_governance {
     /// verify_only
     spec initialize_for_verification(
         supra_framework: &signer,
+        multisig_account_address: address,
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
