@@ -381,26 +381,26 @@ module supra_framework::supra_governance {
         is_multi_step_proposal: bool,
     ): u64 acquires GovernanceConfig, GovernanceEvents {
         let proposer_address = signer::address_of(proposer);
-        assert!(
-            stake::get_delegated_voter(stake_pool) == proposer_address,
-            error::invalid_argument(ENOT_DELEGATED_VOTER)
-        );
+        // assert!(
+        //     stake::get_delegated_voter(stake_pool) == proposer_address,
+        //     error::invalid_argument(ENOT_DELEGATED_VOTER)
+        // );
 
         // The proposer's stake needs to be at least the required bond amount.
         let governance_config = borrow_global<GovernanceConfig>(@supra_framework);
-        let stake_balance = get_voting_power(stake_pool);
-        assert!(
-            stake_balance >= governance_config.required_proposer_stake,
-            error::invalid_argument(EINSUFFICIENT_PROPOSER_STAKE),
-        );
+        // let stake_balance = get_voting_power(stake_pool);
+        // assert!(
+        //     stake_balance >= governance_config.required_proposer_stake,
+        //     error::invalid_argument(EINSUFFICIENT_PROPOSER_STAKE),
+        // );
 
         // The proposer's stake needs to be locked up at least as long as the proposal's voting period.
         let current_time = timestamp::now_seconds();
         let proposal_expiration = current_time + governance_config.voting_duration_secs;
-        assert!(
-            stake::get_lockup_secs(stake_pool) >= proposal_expiration,
-            error::invalid_argument(EINSUFFICIENT_STAKE_LOCKUP),
-        );
+        // assert!(
+        //     stake::get_lockup_secs(stake_pool) >= proposal_expiration,
+        //     error::invalid_argument(EINSUFFICIENT_STAKE_LOCKUP),
+        // );
 
         // Create and validate proposal metadata.
         let proposal_metadata = create_proposal_metadata(metadata_location, metadata_hash);
@@ -512,25 +512,25 @@ module supra_framework::supra_governance {
         should_pass: bool,
     ) acquires ApprovedExecutionHashes, VotingRecords, VotingRecordsV2, GovernanceEvents {
         let voter_address = signer::address_of(voter);
-        assert!(stake::get_delegated_voter(stake_pool) == voter_address, error::invalid_argument(ENOT_DELEGATED_VOTER));
+        // assert!(stake::get_delegated_voter(stake_pool) == voter_address, error::invalid_argument(ENOT_DELEGATED_VOTER));
 
         // The voter's stake needs to be locked up at least as long as the proposal's expiration.
-        let proposal_expiration = voting::get_proposal_expiration_secs<GovernanceProposal>(
-            @supra_framework,
-            proposal_id
-        );
-        assert!(
-            stake::get_lockup_secs(stake_pool) >= proposal_expiration,
-            error::invalid_argument(EINSUFFICIENT_STAKE_LOCKUP),
-        );
+        // let proposal_expiration = voting::get_proposal_expiration_secs<GovernanceProposal>(
+        //     @supra_framework,
+        //     proposal_id
+        // );
+        // assert!(
+        //     stake::get_lockup_secs(stake_pool) >= proposal_expiration,
+        //     error::invalid_argument(EINSUFFICIENT_STAKE_LOCKUP),
+        // );
 
         // If a stake pool has already voted on a proposal before partial governance voting is enabled,
         // `get_remaining_voting_power` returns 0.
-        let staking_pool_voting_power = get_remaining_voting_power(stake_pool, proposal_id);
-        voting_power = min(voting_power, staking_pool_voting_power);
-
-        // Short-circuit if the voter has no voting power.
-        assert!(voting_power > 0, error::invalid_argument(ENO_VOTING_POWER));
+        // let staking_pool_voting_power = get_remaining_voting_power(stake_pool, proposal_id);
+        // voting_power = min(voting_power, staking_pool_voting_power);
+        //
+        // // Short-circuit if the voter has no voting power.
+        // assert!(voting_power > 0, error::invalid_argument(ENO_VOTING_POWER));
 
         voting::vote<GovernanceProposal>(
             &governance_proposal::create_empty_proposal(),
