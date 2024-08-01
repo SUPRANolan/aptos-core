@@ -203,10 +203,11 @@ module supra_framework::supra_governance {
 
         voting::register<GovernanceProposal>(supra_framework);
         let multisig_account_owners = multisig_account::owners(multisig_account_address);
+        let num_signatures_required = multisig_account::num_signatures_required(multisig_account_address);
         move_to(supra_framework, GovernanceConfig {
             voting_duration_secs,
             multisig_account_owners,
-            min_voting_threshold,
+            min_voting_threshold: (num_signatures_required as u128),
             required_proposer_stake,
         });
         move_to(supra_framework, GovernanceEvents {
