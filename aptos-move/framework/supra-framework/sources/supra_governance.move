@@ -382,6 +382,9 @@ module supra_framework::supra_governance {
         is_multi_step_proposal: bool,
     ): u64 acquires GovernanceConfig, GovernanceEvents {
         let proposer_address = signer::address_of(proposer);
+        // check if the proposer is one the owners address of the multisig account
+        let multisig_account_owners = borrow_global<GovernanceConfig>(@supra_framework).multisig_account_owners;
+        assert!(vector::contains(&multisig_account_owners, &proposer_address), 0);
         // assert!(
         //     stake::get_delegated_voter(stake_pool) == proposer_address,
         //     error::invalid_argument(ENOT_DELEGATED_VOTER)
