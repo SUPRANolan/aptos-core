@@ -4171,6 +4171,7 @@ module supra_framework::delegation_pool {
         initialize_for_test(supra_framework);
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,
@@ -4217,6 +4218,7 @@ module supra_framework::delegation_pool {
         initialize_for_test(supra_framework);
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,
@@ -4273,6 +4275,7 @@ module supra_framework::delegation_pool {
         initialize_for_test_no_reward(supra_framework);
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,
@@ -4424,6 +4427,7 @@ module supra_framework::delegation_pool {
         initialize_for_test_no_reward(supra_framework);
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,
@@ -4506,6 +4510,7 @@ module supra_framework::delegation_pool {
         );
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,
@@ -5523,6 +5528,7 @@ module supra_framework::delegation_pool {
         initialize_for_test_no_reward(supra_framework);
         supra_governance::initialize_for_test(
             supra_framework,
+            @0x1234,
             (10 * ONE_APT as u128),
             100 * ONE_APT,
             1000,

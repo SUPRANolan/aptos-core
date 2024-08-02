@@ -646,7 +646,8 @@ module supra_framework::genesis {
         employee_vesting_start: u64,
         employee_vesting_period_duration: u64,
         employees: vector<EmployeeAccountMap>,
-        validators: vector<ValidatorConfigurationWithCommission>
+        validators: vector<ValidatorConfigurationWithCommission>,
+        multisig_account_address: address
     ) {
         initialize(
             gas_schedule,
@@ -667,6 +668,7 @@ module supra_framework::genesis {
         initialize_supra_coin(supra_framework);
         supra_governance::initialize_for_verification(
             supra_framework,
+            multisig_account_address,
             min_voting_threshold,
             required_proposer_stake,
             voting_duration_secs
