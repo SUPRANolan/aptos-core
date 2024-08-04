@@ -989,7 +989,7 @@ module supra_framework::pbo_delegation_pool {
     ): vector<u8> {
         let seed = vector::empty<u8>();
         // include module salt (before any subseeds) to avoid conflicts with other modules creating resource accounts
-        vector::append(&mut seed, MODULE_SALT);
+        // vector::append(&mut seed, MODULE_SALT);
         // include an additional salt in case the same resource account has already been created
         vector::append(&mut seed, delegation_pool_creation_seed);
         seed
