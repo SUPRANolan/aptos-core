@@ -200,6 +200,7 @@ pub fn encode_genesis_transaction(
 ) -> Transaction {
     Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set(
         &aptos_root_key,
+        &[],
         validators,
         delegation_pools,
         vesting_pools,
@@ -214,6 +215,7 @@ pub fn encode_genesis_transaction(
 
 pub fn encode_genesis_change_set(
     core_resources_key: &Ed25519PublicKey,
+    accounts: &[AccountBalance],
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
@@ -262,6 +264,8 @@ pub fn encode_genesis_change_set(
         initialize_supra_coin(&mut session);
     }
     initialize_on_chain_governance(&mut session, genesis_config);
+
+    create_accounts(&mut session, accounts);
 
     if validators.len() > 0 {
         create_and_initialize_validators(&mut session, validators);
@@ -922,6 +926,7 @@ pub fn generate_test_genesis(
 
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
+        &[],
         validators,
         &[],
         &[],
@@ -961,6 +966,7 @@ pub fn generate_mainnet_genesis(
 
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
+        &[],
         validators,
         &[],
         &[],
