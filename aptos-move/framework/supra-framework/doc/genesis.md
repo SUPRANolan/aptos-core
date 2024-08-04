@@ -1363,6 +1363,8 @@ The last step of genesis.
 
 <pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_set_genesis_end">set_genesis_end</a>(supra_framework: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>) {
     <a href="chain_status.md#0x1_chain_status_set_genesis_end">chain_status::set_genesis_end</a>(supra_framework);
+
+    <a href="stake.md#0x1_stake_on_new_epoch">stake::on_new_epoch</a>();
 }
 </code></pre>
 
