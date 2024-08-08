@@ -889,8 +889,6 @@ If it exists, it just returns the signer.
     // Destroy the aptos framework <a href="account.md#0x1_account">account</a>'s ability <b>to</b> mint coins now that we're done <b>with</b> setting up the initial
     // validators.
     <a href="supra_coin.md#0x1_supra_coin_destroy_mint_cap">supra_coin::destroy_mint_cap</a>(supra_framework);
-
-    <a href="stake.md#0x1_stake_on_new_epoch">stake::on_new_epoch</a>();
 }
 </code></pre>
 
