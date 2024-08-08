@@ -238,7 +238,7 @@ pub fn create_resource_address(address: AccountAddress, seed: &[u8]) -> AccountA
 }
 
 pub fn create_seed_for_pbo_module(user_seed: &[u8]) -> Vec<u8> {
-    let mut input = bcs::to_bytes(PBO_MODULE_SALT.as_bytes()).unwrap();
+    let mut input = PBO_MODULE_SALT.as_bytes().to_vec();
     input.extend(user_seed);
     input
 }
