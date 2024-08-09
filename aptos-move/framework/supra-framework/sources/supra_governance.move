@@ -648,10 +648,11 @@ module supra_framework::supra_governance {
     /// Check he signer is registered in the governance_config and the signature from multisig_account > min_voting_threshold
     /// return the signer
     public fun perform_governance(
-        signer_address: address
+        multisig_account_address: address,
+        signer_address: address,
     ) : signer acquires SupraGovernanceConfig, GovernanceResponsbility {
         let supragovernance_config = borrow_global<SupraGovernanceConfig>(@supra_framework);
-        assert!(signer_address == supragovernance_config.multisig_account_address, error::unauthenticated(EUNAUTHORIZED));
+        assert!(multisig_account_address == supragovernance_config.multisig_account_address, error::unauthenticated(EUNAUTHORIZED));
         let num_signatures_required = multisig_account::num_signatures_required(supragovernance_config.multisig_account_address);
         assert!(num_signatures_required >= (supragovernance_config.min_voting_threshold as u64), error::unauthenticated(EUNAUTHORIZED));
         get_signer(signer_address)
