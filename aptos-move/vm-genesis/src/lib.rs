@@ -75,6 +75,8 @@ const NUM_SECONDS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 const MICRO_SECONDS_PER_SECOND: u64 = 1_000_000;
 const APTOS_COINS_BASE_WITH_DECIMALS: u64 = u64::pow(10, 8);
 
+const PBO_DELEGATION_POOL_LOCKUP_PERCENTAGE: u64 = 90;
+
 pub struct GenesisConfiguration {
     pub allow_new_validators: bool,
     pub epoch_duration_secs: u64,
@@ -742,7 +744,7 @@ fn create_and_initialize_validators_with_commission(
     let validators_bytes = bcs::to_bytes(validators).expect("Validators can be serialized");
     let mut serialized_values = serialize_values(&vec![
         MoveValue::Signer(CORE_CODE_ADDRESS),
-        MoveValue::Bool(false),
+        MoveValue::Bool(true),
     ]);
     serialized_values.push(validators_bytes);
     exec_function(
@@ -761,7 +763,7 @@ fn create_pbo_delegation_pools(
     let pbo_config_bytes = bcs::to_bytes(pbo_delegator_configuration)
         .expect("PboDelegatorConfiguration can be serialized");
     let mut serialized_values = serialize_values(&vec![
-        MoveValue::U64(90), // Delegation % - hardcoded for prototyping
+        MoveValue::U64(PBO_DELEGATION_POOL_LOCKUP_PERCENTAGE),
     ]);
     serialized_values.insert(0, pbo_config_bytes);
     exec_function(
