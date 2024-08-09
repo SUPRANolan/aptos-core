@@ -21,6 +21,7 @@ module supra_framework::supra_governance {
     use aptos_std::simple_map::{Self, SimpleMap};
     use aptos_std::smart_table::{Self, SmartTable};
     use aptos_std::table::{Self, Table};
+    use supra_framework::multisig_account;
 
     use supra_framework::account::{Self, SignerCapability, create_signer_with_capability};
     use supra_framework::coin;
@@ -83,6 +84,11 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+    }
+
+    struct SupraGovernanceConfig has key {
+        min_voting_threshold: u128,
+        multisig_account_address: address,
     }
 
     struct RecordKey has copy, drop, store {
@@ -195,10 +201,15 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+        // multisig_account_address: address,
     ) {
         system_addresses::assert_supra_framework(supra_framework);
 
         voting::register<GovernanceProposal>(supra_framework);
+        // move_to(supra_framework, SupraGovernanceConfig {
+        //     min_voting_threshold,
+        //     multisig_account_address,
+        // });
         move_to(supra_framework, GovernanceConfig {
             voting_duration_secs,
             min_voting_threshold,
@@ -215,6 +226,32 @@ module supra_framework::supra_governance {
         move_to(supra_framework, ApprovedExecutionHashes {
             hashes: simple_map::create<u64, vector<u8>>(),
         })
+    }
+
+    fun supra_intialization(
+        supra_framework: &signer,
+        min_voting_threshold: u128,
+        multisig_account_address: address,
+    ) {
+        system_addresses::assert_supra_framework(supra_framework);
+
+        voting::register<GovernanceProposal>(supra_framework);
+        move_to(supra_framework, SupraGovernanceConfig {
+            min_voting_threshold,
+            multisig_account_address,
+        });
+    }
+
+    public fun update_supra_governance_config(
+        supra_framework: &signer,
+        min_voting_threshold: u128,
+        multisig_account_address: address,
+    ) acquires SupraGovernanceConfig {
+        system_addresses::assert_supra_framework(supra_framework);
+
+        let supra_governance_config = borrow_global_mut<SupraGovernanceConfig>(@supra_framework);
+        supra_governance_config.min_voting_threshold = min_voting_threshold;
+        supra_governance_config.multisig_account_address = multisig_account_address;
     }
 
     /// Update the governance configurations. This can only be called as part of resolving a proposal in this same
@@ -605,6 +642,19 @@ module supra_framework::supra_governance {
         } else {
             simple_map::add(&mut approved_hashes.hashes, proposal_id, execution_hash);
         }
+    }
+
+    /// This is specific to supra
+    /// Check he signer is registered in the governance_config and the signature from multisig_account > min_voting_threshold
+    /// return the signer
+    public fun perform_governance(
+        signer_address: address
+    ) : signer acquires SupraGovernanceConfig, GovernanceResponsbility {
+        let supragovernance_config = borrow_global<SupraGovernanceConfig>(@supra_framework);
+        assert!(signer_address == supragovernance_config.multisig_account_address, error::unauthenticated(EUNAUTHORIZED));
+        let num_signatures_required = multisig_account::num_signatures_required(supragovernance_config.multisig_account_address);
+        assert!(num_signatures_required >= (supragovernance_config.min_voting_threshold as u64), error::unauthenticated(EUNAUTHORIZED));
+        get_signer(signer_address)
     }
 
     /// Resolve a successful single-step proposal. This would fail if the proposal is not successful (not enough votes or more no
@@ -1371,8 +1421,10 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+        // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 
     #[verify_only]
@@ -1381,7 +1433,9 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+        // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 }
