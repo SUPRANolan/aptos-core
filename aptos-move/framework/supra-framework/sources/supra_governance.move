@@ -643,6 +643,22 @@ module supra_framework::supra_governance {
             simple_map::add(&mut approved_hashes.hashes, proposal_id, execution_hash);
         }
     }
+    //TODO test as a normal user to create script take a signer and sent it the testnet
+    //TODO create 3 account and multisig_account, k = 2, script as payload, vote with the 3 account. Execute the script as a mutlisig_account
+    /// This is specific to supra
+    /// Check he signer is registered in the governance_config and the signature from multisig_account > min_voting_threshold
+    /// return the signer
+    public fun perform_governance(
+        multisig_account_signer: &signer,
+        signer_address: address,
+    ) : signer acquires SupraGovernanceConfig, GovernanceResponsbility {
+        let supragovernance_config = borrow_global<SupraGovernanceConfig>(@supra_framework);
+        let multisig_account_address = signer::address_of(multisig_account_signer);
+        assert!(multisig_account_address == supragovernance_config.multisig_account_address, error::unauthenticated(EUNAUTHORIZED));
+        let num_signatures_required = multisig_account::num_signatures_required(supragovernance_config.multisig_account_address);
+        assert!(num_signatures_required >= (supragovernance_config.min_voting_threshold as u64), error::unauthenticated(EUNAUTHORIZED));
+        get_signer(signer_address)
+    }
 
     /// This is specific to supra
     /// Check he signer is registered in the governance_config and the signature from multisig_account > min_voting_threshold
@@ -1424,8 +1440,10 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
+        // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 
     #[verify_only]
@@ -1437,5 +1455,6 @@ module supra_framework::supra_governance {
         // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
+        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 }
