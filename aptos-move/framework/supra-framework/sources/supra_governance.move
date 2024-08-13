@@ -643,12 +643,11 @@ module supra_framework::supra_governance {
             simple_map::add(&mut approved_hashes.hashes, proposal_id, execution_hash);
         }
     }
-    //TODO test as a normal user to create script take a signer and sent it the testnet
-    //TODO create 3 account and multisig_account, k = 2, script as payload, vote with the 3 account. Execute the script as a mutlisig_account
+
     /// This is specific to supra
     /// Check he signer is registered in the governance_config and the signature from multisig_account > min_voting_threshold
     /// return the signer
-    public fun perform_governance(
+    public fun resolve(
         multisig_account_signer: &signer,
         signer_address: address,
     ) : signer acquires SupraGovernanceConfig, GovernanceResponsbility {
@@ -660,16 +659,16 @@ module supra_framework::supra_governance {
         get_signer(signer_address)
     }
 
-    /// Resolve a successful single-step proposal. This would fail if the proposal is not successful (not enough votes or more no
-    /// than yes).
-    public fun resolve(
-        proposal_id: u64,
-        signer_address: address
-    ): signer acquires ApprovedExecutionHashes, GovernanceResponsbility {
-        voting::resolve<GovernanceProposal>(@supra_framework, proposal_id);
-        remove_approved_hash(proposal_id);
-        get_signer(signer_address)
-    }
+    // /// Resolve a successful single-step proposal. This would fail if the proposal is not successful (not enough votes or more no
+    // /// than yes).
+    // public fun resolve(
+    //     proposal_id: u64,
+    //     signer_address: address
+    // ): signer acquires ApprovedExecutionHashes, GovernanceResponsbility {
+    //     voting::resolve<GovernanceProposal>(@supra_framework, proposal_id);
+    //     remove_approved_hash(proposal_id);
+    //     get_signer(signer_address)
+    // }
 
     /// Resolve a successful multi-step proposal. This would fail if the proposal is not successful.
     public fun resolve_multi_step_proposal(
@@ -842,7 +841,8 @@ module supra_framework::supra_governance {
                 resolve_multi_step_proposal(proposal_id, signer_address, execution_hash)
             }
         } else {
-            resolve(proposal_id, signer_address)
+            // resolve(proposal_id, signer_address)
+            get_signer(signer_address)
         }
     }
 
@@ -899,15 +899,15 @@ module supra_framework::supra_governance {
         assert!(!simple_map::contains_key(&approved_hashes, &0), 3);
     }
 
-    #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
-    public entry fun test_voting(
-        supra_framework: signer,
-        proposer: signer,
-        yes_voter: signer,
-        no_voter: signer,
-    ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, false, false);
-    }
+    // #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
+    // public entry fun test_voting(
+    //     supra_framework: signer,
+    //     proposer: signer,
+    //     yes_voter: signer,
+    //     no_voter: signer,
+    // ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    //     test_voting_generic(supra_framework, proposer, yes_voter, no_voter, false, false);
+    // }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_voting_multi_step(
@@ -919,16 +919,16 @@ module supra_framework::supra_governance {
         test_voting_generic(supra_framework, proposer, yes_voter, no_voter, true, true);
     }
 
-    #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
-    #[expected_failure(abort_code = 0x5000a, location = supra_framework::voting)]
-    public entry fun test_voting_multi_step_cannot_use_single_step_resolve(
-        supra_framework: signer,
-        proposer: signer,
-        yes_voter: signer,
-        no_voter: signer,
-    ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
-        test_voting_generic(supra_framework, proposer, yes_voter, no_voter, true, false);
-    }
+    // #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
+    // #[expected_failure(abort_code = 0x5000a, location = supra_framework::voting)]
+    // public entry fun test_voting_multi_step_cannot_use_single_step_resolve(
+    //     supra_framework: signer,
+    //     proposer: signer,
+    //     yes_voter: signer,
+    //     no_voter: signer,
+    // ) acquires ApprovedExecutionHashes, GovernanceConfig, GovernanceResponsbility, VotingRecords, VotingRecordsV2, GovernanceEvents {
+    //     test_voting_generic(supra_framework, proposer, yes_voter, no_voter, true, false);
+    // }
 
     #[test(supra_framework = @supra_framework, proposer = @0x123, yes_voter = @0x234, no_voter = @345)]
     public entry fun test_voting_single_step_can_use_generic_resolve_function(
@@ -1424,10 +1424,8 @@ module supra_framework::supra_governance {
         min_voting_threshold: u128,
         required_proposer_stake: u64,
         voting_duration_secs: u64,
-        // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
-        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 
     #[verify_only]
@@ -1439,6 +1437,5 @@ module supra_framework::supra_governance {
         // multisig_account_address: address,
     ) {
         initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs);
-        // initialize(supra_framework, min_voting_threshold, required_proposer_stake, voting_duration_secs, multisig_account_address);
     }
 }

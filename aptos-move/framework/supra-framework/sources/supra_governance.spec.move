@@ -525,41 +525,41 @@ spec supra_framework::supra_governance {
     }
 
     /// Address @supra_framework must exist ApprovedExecutionHashes and GovernanceProposal and GovernanceResponsbility.
-    spec resolve(proposal_id: u64, signer_address: address): signer {
-        use supra_framework::chain_status;
-
-        requires chain_status::is_operating();
-
-        // verify voting::resolve
-        include VotingIsProposalResolvableAbortsif;
-
-        let voting_forum = global<voting::VotingForum<GovernanceProposal>>(@supra_framework);
-        let proposal = table::spec_get(voting_forum.proposals, proposal_id);
-
-        let multi_step_key = utf8(voting::IS_MULTI_STEP_PROPOSAL_KEY);
-        let has_multi_step_key = simple_map::spec_contains_key(proposal.metadata, multi_step_key);
-        let is_multi_step_proposal = aptos_std::from_bcs::deserialize<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
-        aborts_if has_multi_step_key && !aptos_std::from_bcs::deserializable<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
-        aborts_if !string::spec_internal_check_utf8(voting::IS_MULTI_STEP_PROPOSAL_KEY);
-        aborts_if has_multi_step_key && is_multi_step_proposal;
-
-        let post post_voting_forum = global<voting::VotingForum<GovernanceProposal>>(@supra_framework);
-        let post post_proposal = table::spec_get(post_voting_forum.proposals, proposal_id);
-        ensures post_proposal.is_resolved == true && post_proposal.resolution_time_secs == timestamp::now_seconds();
-        aborts_if option::spec_is_none(proposal.execution_content);
-
-        // verify remove_approved_hash
-        aborts_if !exists<ApprovedExecutionHashes>(@supra_framework);
-        let post post_approved_hashes = global<ApprovedExecutionHashes>(@supra_framework).hashes;
-        ensures !simple_map::spec_contains_key(post_approved_hashes, proposal_id);
-
-        // verify get_signer
-        include GetSignerAbortsIf;
-        let governance_responsibility = global<GovernanceResponsbility>(@supra_framework);
-        let signer_cap = simple_map::spec_get(governance_responsibility.signer_caps, signer_address);
-        let addr = signer_cap.account;
-        ensures signer::address_of(result) == addr;
-    }
+    // spec resolve(proposal_id: u64, signer_address: address): signer {
+    //     use supra_framework::chain_status;
+    //
+    //     requires chain_status::is_operating();
+    //
+    //     // verify voting::resolve
+    //     include VotingIsProposalResolvableAbortsif;
+    //
+    //     let voting_forum = global<voting::VotingForum<GovernanceProposal>>(@supra_framework);
+    //     let proposal = table::spec_get(voting_forum.proposals, proposal_id);
+    //
+    //     let multi_step_key = utf8(voting::IS_MULTI_STEP_PROPOSAL_KEY);
+    //     let has_multi_step_key = simple_map::spec_contains_key(proposal.metadata, multi_step_key);
+    //     let is_multi_step_proposal = aptos_std::from_bcs::deserialize<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
+    //     aborts_if has_multi_step_key && !aptos_std::from_bcs::deserializable<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
+    //     aborts_if !string::spec_internal_check_utf8(voting::IS_MULTI_STEP_PROPOSAL_KEY);
+    //     aborts_if has_multi_step_key && is_multi_step_proposal;
+    //
+    //     let post post_voting_forum = global<voting::VotingForum<GovernanceProposal>>(@supra_framework);
+    //     let post post_proposal = table::spec_get(post_voting_forum.proposals, proposal_id);
+    //     ensures post_proposal.is_resolved == true && post_proposal.resolution_time_secs == timestamp::now_seconds();
+    //     aborts_if option::spec_is_none(proposal.execution_content);
+    //
+    //     // verify remove_approved_hash
+    //     aborts_if !exists<ApprovedExecutionHashes>(@supra_framework);
+    //     let post post_approved_hashes = global<ApprovedExecutionHashes>(@supra_framework).hashes;
+    //     ensures !simple_map::spec_contains_key(post_approved_hashes, proposal_id);
+    //
+    //     // verify get_signer
+    //     include GetSignerAbortsIf;
+    //     let governance_responsibility = global<GovernanceResponsbility>(@supra_framework);
+    //     let signer_cap = simple_map::spec_get(governance_responsibility.signer_caps, signer_address);
+    //     let addr = signer_cap.account;
+    //     ensures signer::address_of(result) == addr;
+    // }
 
     /// Address @supra_framework must exist ApprovedExecutionHashes and GovernanceProposal.
     spec remove_approved_hash(proposal_id: u64) {
