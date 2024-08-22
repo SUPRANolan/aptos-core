@@ -122,7 +122,7 @@ module supra_framework::pbo_delegation_pool {
     use supra_framework::coin::Coin;
 
     use supra_framework::account;
-    use supra_framework::aptos_account;
+    use supra_framework::supra_account;
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::supra_governance;
     use supra_framework::coin;
@@ -1271,7 +1271,7 @@ module supra_framework::pbo_delegation_pool {
         let delegator_address = signer::address_of(delegator);
 
         // stake the entire amount to the stake pool
-        aptos_account::transfer(delegator, pool_address, amount);
+        supra_account::transfer(delegator, pool_address, amount);
         stake::add_stake(&retrieve_stake_pool_owner(pool), amount);
 
         // but buy shares for delegator just for the remaining amount after fee
@@ -1421,7 +1421,7 @@ module supra_framework::pbo_delegation_pool {
             // no excess stake if `stake::withdraw` does not inactivate at all
             stake::withdraw(stake_pool_owner, amount);
         };
-        aptos_account::transfer(stake_pool_owner, delegator_address, amount);
+        supra_account::transfer(stake_pool_owner, delegator_address, amount);
 
         // commit withdrawal of possibly inactive stake to the `total_coins_inactive`
         // known by the delegation pool in order to not mistake it for slashing at next synchronization
@@ -3569,13 +3569,13 @@ module supra_framework::pbo_delegation_pool {
         initialize_for_test(supra_framework);
 
         let operator1_address = signer::address_of(operator1);
-        aptos_account::create_account(operator1_address);
+        supra_account::create_account(operator1_address);
 
         let operator2_address = signer::address_of(operator2);
-        aptos_account::create_account(operator2_address);
+        supra_account::create_account(operator2_address);
 
         let beneficiary_address = signer::address_of(beneficiary);
-        aptos_account::create_account(beneficiary_address);
+        supra_account::create_account(beneficiary_address);
         let delegator_address = vector[@0x010];
         let principle_stake = vector[0];
         let coin = stake::mint_coins(0);
@@ -4682,8 +4682,17 @@ module supra_framework::pbo_delegation_pool {
         let coin = stake::mint_coins(2000 * ONE_APT);
         let principle_lockup_time = 1000000;
         let delegator1_address = signer::address_of(delegator1);
-        aptos_account::create_account(delegator1_address);
-        initialize_test_validator(validator, 0, true, true, delegator_address, principle_stake, coin, principle_lockup_time);
+        supra_account::create_account(delegator1_address);
+        initialize_test_validator(validator, 0, true, true, 0,
+            delegator_address,
+            principle_stake,
+            coin,
+            option::none(),
+            vector[2, 2, 3],
+            10,
+            principle_lockup_time,
+            12
+        );
         let validator_address = signer::address_of(validator);
         let pool_address = get_owned_pool_address(validator_address);
         stake::mint(delegator1, 1000 * ONE_APT);
@@ -4708,9 +4717,18 @@ module supra_framework::pbo_delegation_pool {
         let principle_lockup_time = 1000000;
         let delegator1_address = signer::address_of(delegator1);
         let delegator2_address = signer::address_of(delegator2);
-        aptos_account::create_account(delegator1_address);
-        aptos_account::create_account(delegator2_address);
-        initialize_test_validator(validator, 0, true, true, delegator_address, principle_stake, coin, principle_lockup_time);
+        supra_account::create_account(delegator1_address);
+        supra_account::create_account(delegator2_address);
+        initialize_test_validator(validator, 0, true, true, 0,
+            delegator_address,
+            principle_stake,
+            coin,
+            option::none(),
+            vector[2, 2, 3],
+            10,
+            principle_lockup_time,
+            12
+        );
         let validator_address = signer::address_of(validator);
         let pool_address = get_owned_pool_address(validator_address);
         stake::mint(delegator1, 1000 * ONE_APT);
