@@ -6,6 +6,7 @@
 
 mod genesis_context;
 
+use std::hash::{Hash, Hasher};
 use crate::genesis_context::GenesisStateView;
 use aptos_crypto::{
     ed25519,
@@ -70,6 +71,7 @@ const RANDOMNESS_CONFIG_SEQNUM_MODULE_NAME: &str = "randomness_config_seqnum";
 const RANDOMNESS_CONFIG_MODULE_NAME: &str = "randomness_config";
 const RANDOMNESS_MODULE_NAME: &str = "randomness";
 const RECONFIGURATION_STATE_MODULE_NAME: &str = "reconfiguration_state";
+const MULTISIG_ACC_MODULE_NAME: &str = "multisig_account";
 
 const NUM_SECONDS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 const MICRO_SECONDS_PER_SECOND: u64 = 1_000_000;
@@ -116,6 +118,7 @@ pub fn default_gas_schedule() -> GasScheduleV2 {
 
 pub fn encode_aptos_mainnet_genesis_transaction(
     accounts: &[AccountBalance],
+    multisig_accounts: &[MultiSigAccount],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
@@ -157,6 +160,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     initialize_supra_coin(&mut session);
     initialize_on_chain_governance(&mut session, genesis_config);
     create_accounts(&mut session, accounts);
+    create_multisig_accounts(&mut session, multisig_accounts);
 
     // All PBO delegated validators are initialized here
     create_pbo_delegation_pools(&mut session, delegation_pools);
@@ -218,6 +222,7 @@ pub fn encode_genesis_transaction(
     Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set(
         &aptos_root_key,
         &[],
+        &[],
         validators,
         delegation_pools,
         vesting_pools,
@@ -233,6 +238,7 @@ pub fn encode_genesis_transaction(
 pub fn encode_genesis_change_set(
     core_resources_key: &Ed25519PublicKey,
     accounts: &[AccountBalance],
+    multisig_account: &[MultiSigAccount],
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
@@ -290,6 +296,8 @@ pub fn encode_genesis_change_set(
     initialize_on_chain_governance(&mut session, genesis_config);
 
     create_accounts(&mut session, accounts);
+
+    create_multisig_accounts(&mut session, multisig_account);
 
     if validators.len() > 0 {
         create_and_initialize_validators(&mut session, validators);
@@ -757,6 +765,45 @@ fn create_and_initialize_validators_with_commission(
     );
 }
 
+fn create_multisig_accounts(
+    session: &mut SessionExt,
+    multisig_accounts: &[MultiSigAccount],
+) {
+    for account_configuration in multisig_accounts {
+        let mut serialized_values = serialize_values(&vec![
+            MoveValue::Signer(account_configuration.owner),
+        ]);
+
+        let additional_owners_bytes = bcs::to_bytes(&account_configuration.additional_owners)
+            .expect("Additional owners for MultiSig accounts should be serializable");
+        serialized_values.push(additional_owners_bytes);
+
+        let threshold_bytes = bcs::to_bytes(&account_configuration.num_signatures_required)
+            .expect("Threshold u64 for MultiSig accounts should be serializable");
+        serialized_values.push(threshold_bytes);
+
+        let metadata_keys_bytes = bcs::to_bytes(&account_configuration.metadata_keys)
+            .expect("Metadata Keys for MultiSig accounts should be serializable");
+        serialized_values.push(metadata_keys_bytes);
+
+        let metadata_values_bytes = bcs::to_bytes(&account_configuration.metadata_values)
+            .expect("Metadata Values for MultiSig accounts should be serializable");
+        serialized_values.push(metadata_values_bytes);
+
+        let timeout_duration_bytes = bcs::to_bytes(&account_configuration.timeout_duration)
+            .expect("Timeout duration for MultiSig accounts should be serializable");
+        serialized_values.push(timeout_duration_bytes);
+
+        exec_function(
+            session,
+            MULTISIG_ACC_MODULE_NAME,
+            "create_with_owners",
+            vec![],
+            serialized_values,
+        );
+    }
+}
+
 fn create_pbo_delegation_pools(
     session: &mut SessionExt,
     pbo_delegator_configuration: &[PboDelegatorConfiguration],
@@ -938,7 +985,7 @@ pub fn test_genesis_change_set_and_validators(
     generate_test_genesis(aptos_cached_packages::head_release_bundle(), count)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Validator {
     /// The Aptos account address of the validator or the admin in the case of a commissioned or
     /// vesting managed validator.
@@ -1014,6 +1061,7 @@ pub fn generate_test_genesis(
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
         &[],
+        &[],
         validators,
         &[],
         &[],
@@ -1063,6 +1111,7 @@ pub fn generate_mainnet_genesis(
     let genesis = encode_genesis_change_set(
         &GENESIS_KEYPAIR.1,
         &[],
+        &[],
         validators,
         &[],
         &[],
@@ -1105,10 +1154,17 @@ fn mainnet_genesis_config() -> GenesisConfiguration {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AccountBalance {
     pub account_address: AccountAddress,
     pub balance: u64,
+}
+
+impl Hash for AccountBalance {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(&self.account_address.to_vec());
+        state.finish();
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1121,7 +1177,7 @@ pub struct EmployeePool {
     pub beneficiary_resetter: AccountAddress,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct ValidatorWithCommissionRate {
     pub validator: Validator,
     pub validator_commission_percentage: u64,
@@ -1129,7 +1185,7 @@ pub struct ValidatorWithCommissionRate {
     pub join_during_genesis: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct DelegatorConfiguration {
     pub owner_address: AccountAddress,
     pub delegation_pool_creation_seed: Vec<u8>,
@@ -1138,13 +1194,22 @@ pub struct DelegatorConfiguration {
     pub delegator_stakes: Vec<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct PboDelegatorConfiguration {
     pub delegator_config: DelegatorConfiguration,
-    pub principle_lockup_time: u64,
+    //Address of the multisig admin of the pool
+    pub multisig_admin: AccountAddress,
+    //Numerator for unlock fraction
+    pub unlock_schedule_numerators: Vec<u64>,
+    //Denominator for unlock fraction
+    pub unlock_schedule_denominator: u64,
+    //Time from `timestamp::now_seconds()` to start unlocking schedule
+    pub unlock_startup_time_from_now: u64,
+    //Time for each unlock
+    pub unlock_period_duration: u64,
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize, Hash)]
 pub struct VestingPoolsMap {
     // Address of the admin of the vesting pool
     pub admin_address: AccountAddress,
@@ -1160,6 +1225,23 @@ pub struct VestingPoolsMap {
     pub cliff_period_in_seconds: u64,
     // Each vesting period duration in seconds
     pub period_duration_in_seconds: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+pub struct MultiSigAccount {
+    pub owner: AccountAddress,
+    pub additional_owners: Vec<AccountAddress>,
+    pub num_signatures_required: u64,
+    pub metadata_keys: Vec<String>,
+    pub metadata_values: Vec<Vec<u8>>,
+    pub timeout_duration: u64,
+}
+
+impl Hash for MultiSigAccount {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(&self.owner.to_vec());
+        state.finish();
+    }
 }
 
 #[test]
@@ -1185,12 +1267,7 @@ pub fn test_mainnet_end_to_end() {
     const TOTAL_SUPPLY: u64 = 100_000_000_000 * APTOS_COINS_BASE_WITH_DECIMALS;
     const PBO_DELEGATOR_STAKE: u64 = 9_000_000 * APTOS_COINS_BASE_WITH_DECIMALS; // 9 mil
 
-    use aptos_types::{
-        account_address,
-        on_chain_config::ValidatorSet,
-        state_store::state_key::StateKey,
-        write_set::{TransactionWrite, WriteSet},
-    };
+    use aptos_types::write_set::{TransactionWrite, WriteSet};
 
     // 21 Staking accounts - Total 210 million $Supra
     let pbo_balance = 10_000_000 * APTOS_COINS_BASE_WITH_DECIMALS; // 10 million each
@@ -1208,6 +1285,14 @@ pub fn test_mainnet_end_to_end() {
 
     // currently just test that all functions have the right interface
     let supra_foundation = AccountAddress::from_hex_literal("0x777").unwrap();
+
+    let multisig_account01 = AccountAddress::from_hex_literal("0x1231").unwrap();
+    let multisig_account02 = AccountAddress::from_hex_literal("0x1232").unwrap();
+    let multisig_account03 = AccountAddress::from_hex_literal("0x1233").unwrap();
+    let multisig_account04 = AccountAddress::from_hex_literal("0x1234").unwrap();
+    let multisig_account05 = AccountAddress::from_hex_literal("0x1235").unwrap();
+    let multisig_account06 = AccountAddress::from_hex_literal("0x1236").unwrap();
+    let multisig_account07 = AccountAddress::from_hex_literal("0x1237").unwrap();
 
     let test_validators = TestValidator::new_test_set(Some(7), None);
 
@@ -1460,7 +1545,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account01, pbo_account02, pbo_account03],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account01,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val1 = PboDelegatorConfiguration {
@@ -1475,7 +1564,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account11, pbo_account12, pbo_account13],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account02,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val2 = PboDelegatorConfiguration {
@@ -1490,7 +1583,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account21, pbo_account22, pbo_account13],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account03,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val3 = PboDelegatorConfiguration {
@@ -1505,7 +1602,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account31, pbo_account32, pbo_account33],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account04,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val4 = PboDelegatorConfiguration {
@@ -1520,7 +1621,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account41, pbo_account42, pbo_account43],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account05,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val5 = PboDelegatorConfiguration {
@@ -1535,7 +1640,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account51, pbo_account52, pbo_account53],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account06,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let pbo_config_val6 = PboDelegatorConfiguration {
@@ -1550,7 +1659,11 @@ pub fn test_mainnet_end_to_end() {
             delegator_addresses: vec![pbo_account61, pbo_account62, pbo_account63],
             delegator_stakes: vec![PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE, PBO_DELEGATOR_STAKE],
         },
-        principle_lockup_time: 100,
+        multisig_admin: multisig_account07,
+        unlock_schedule_numerators: vec![],
+        unlock_schedule_denominator: 0,
+        unlock_startup_time_from_now: 0,
+        unlock_period_duration: 0,
     };
 
     let employee_vesting_config1 = VestingPoolsMap {
@@ -1576,6 +1689,7 @@ pub fn test_mainnet_end_to_end() {
 
     let transaction = encode_aptos_mainnet_genesis_transaction(
         &accounts,
+        &[],
         &pbo_delegator_configs,
         &[employee_vesting_config1],
         aptos_cached_packages::head_release_bundle(),

@@ -127,6 +127,7 @@ impl MainnetGenesisInfo {
             &self.accounts,
             &[],
             &[],
+            &[],
             &self.framework,
             self.chain_id,
             &aptos_vm_genesis::GenesisConfiguration {
