@@ -20,6 +20,7 @@ env:
   SUI_BIN: ~/.cargo/bin/sui
   APTOS_BIN: ~/.local/bin/aptos
   SCRYPTO_BIN: ~/.cargo/bin/scrypto
+  CARGO_TEST_TIMEOUT: 1200  # Set timeout to 1200 seconds (20 minutes)
 
 jobs:
   build:
