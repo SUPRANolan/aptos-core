@@ -1154,7 +1154,7 @@ fn mainnet_genesis_config() -> GenesisConfiguration {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AccountBalance {
     pub account_address: AccountAddress,
     pub balance: u64,
