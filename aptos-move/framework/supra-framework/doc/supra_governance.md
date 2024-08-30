@@ -2246,7 +2246,7 @@ cannot vote on the proposal even after partial governance voting is enabled.
         @supra_framework,
         proposal_id
     );
-    <b>assert</b>!(<a href="timestamp.md#0x1_timestamp_now_seconds">timestamp::now_seconds</a>() &gt;= proposal_expiration, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="supra_governance.md#0x1_supra_governance_EPROPOSAL_IS_EXPIRE">EPROPOSAL_IS_EXPIRE</a>));
+    <b>assert</b>!(<a href="timestamp.md#0x1_timestamp_now_seconds">timestamp::now_seconds</a>() &lt;= proposal_expiration, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="supra_governance.md#0x1_supra_governance_EPROPOSAL_IS_EXPIRE">EPROPOSAL_IS_EXPIRE</a>));
 
     <a href="multisig_voting.md#0x1_multisig_voting_vote">multisig_voting::vote</a>&lt;GovernanceProposal&gt;(
         voter,
