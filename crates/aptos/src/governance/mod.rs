@@ -1,7 +1,6 @@
 // Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod delegation_pool;
 pub mod utils;
 
 #[cfg(feature = "no-upload-proposal")]
@@ -50,6 +49,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use supra_aptos::{SupraCommand, SupraCommandArguments};
 use tempfile::TempDir;
 
 /// Tool for on-chain governance
@@ -67,8 +67,6 @@ pub enum GovernanceTool {
     ExecuteProposal(ExecuteProposal),
     GenerateUpgradeProposal(GenerateUpgradeProposal),
     ApproveExecutionHash(ApproveExecutionHash),
-    #[clap(subcommand)]
-    DelegationPool(delegation_pool::DelegationPoolTool),
 }
 
 impl GovernanceTool {
@@ -83,7 +81,6 @@ impl GovernanceTool {
             ListProposals(tool) => tool.execute_serialized().await,
             VerifyProposal(tool) => tool.execute_serialized().await,
             ApproveExecutionHash(tool) => tool.execute_serialized().await,
-            DelegationPool(tool) => tool.execute().await,
         }
     }
 }
@@ -116,7 +113,7 @@ impl CliCommand<VerifiedProposal> for ViewProposal {
         let forum = client
             .get_account_resource_bcs::<VotingForum>(
                 AccountAddress::ONE,
-                "0x1::voting::VotingForum<0x1::governance_proposal::GovernanceProposal>",
+                "0x1::multisig_voting::VotingForum<0x1::governance_proposal::GovernanceProposal>", // multisig_voting
             )
             .await?
             .into_inner();
@@ -178,7 +175,7 @@ impl CliCommand<Vec<ProposalSummary>> for ListProposals {
         let events = client
             .get_account_events_bcs(
                 AccountAddress::ONE,
-                "0x1::supra_governance::GovernanceEvents",
+                "0x1::supra_governance::SupraGovernanceEvents",
                 "create_proposal_events",
                 None,
                 Some(100),
@@ -241,7 +238,7 @@ impl CliCommand<VerifyProposalResponse> for VerifyProposal {
         let forum = client
             .get_account_resource_bcs::<VotingForum>(
                 AccountAddress::ONE,
-                "0x1::voting::VotingForum<0x1::governance_proposal::GovernanceProposal>",
+                "0x1::multisig_voting::VotingForum<0x1::governance_proposal::GovernanceProposal>", // multisig_voting
             )
             .await?
             .into_inner();
@@ -272,7 +269,7 @@ async fn get_proposal(
         .get_table_item(
             voting_table,
             "u64",
-            "0x1::voting::Proposal<0x1::governance_proposal::GovernanceProposal>",
+            "0x1::multisig_voting::Proposal<0x1::governance_proposal::GovernanceProposal>", // multisig_voting
             format!("{}", proposal_id),
         )
         .await?
@@ -284,8 +281,8 @@ async fn get_proposal(
 /// Submit a governance proposal
 #[derive(Parser)]
 pub struct SubmitProposal {
-    #[clap(flatten)]
-    pub(crate) pool_address_args: PoolAddressArgs,
+    // #[clap(flatten)]
+    // pub(crate) pool_address_args: PoolAddressArgs,
     #[clap(flatten)]
     pub(crate) args: SubmitProposalArgs,
 }
@@ -384,8 +381,8 @@ impl CliCommand<ProposalSubmissionSummary> for SubmitProposal {
         let txn: Transaction = if self.args.is_multi_step {
             self.args
                 .txn_options
-                .submit_transaction(aptos_stdlib::supra_governance_create_proposal_v2(
-                    self.pool_address_args.pool_address,
+                .submit_transaction(aptos_stdlib::supra_governance_supra_create_proposal_v2(
+                    // self.pool_address_args.pool_address,
                     script_hash.to_vec(),
                     self.args.metadata_url.to_string().as_bytes().to_vec(),
                     metadata_hash.to_hex().as_bytes().to_vec(),
@@ -395,8 +392,8 @@ impl CliCommand<ProposalSubmissionSummary> for SubmitProposal {
         } else {
             self.args
                 .txn_options
-                .submit_transaction(aptos_stdlib::supra_governance_create_proposal(
-                    self.pool_address_args.pool_address,
+                .submit_transaction(aptos_stdlib::supra_governance_supra_create_proposal(
+                    // self.pool_address_args.pool_address,
                     script_hash.to_vec(),
                     self.args.metadata_url.to_string().as_bytes().to_vec(),
                     metadata_hash.to_hex().as_bytes().to_vec(),
@@ -408,6 +405,40 @@ impl CliCommand<ProposalSubmissionSummary> for SubmitProposal {
         Ok(ProposalSubmissionSummary {
             proposal_id,
             transaction: txn_summary,
+        })
+    }
+}
+
+#[async_trait]
+impl SupraCommand for SubmitProposal {
+    async fn supra_command_arguments(self) -> anyhow::Result<SupraCommandArguments> {
+        // Validate the proposal metadata
+        let (script_hash, metadata_hash) = self.args.compile_proposals().await?;
+        prompt_yes_with_override(
+            "Do you want to submit this proposal?",
+            self.args.txn_options.prompt_options,
+        )?;
+
+        let payload = if self.args.is_multi_step {
+            aptos_stdlib::supra_governance_supra_create_proposal_v2(
+                    script_hash.to_vec(),
+                    self.args.metadata_url.to_string().as_bytes().to_vec(),
+                    metadata_hash.to_hex().as_bytes().to_vec(),
+                    true,
+                )
+        } else {
+          aptos_stdlib::supra_governance_supra_create_proposal(
+                    script_hash.to_vec(),
+                    self.args.metadata_url.to_string().as_bytes().to_vec(),
+                    metadata_hash.to_hex().as_bytes().to_vec(),
+                )
+        };
+        Ok(SupraCommandArguments {
+            payload,
+            sender_account: self.args.txn_options.sender_account,
+            profile_options: supra_aptos::ProfileOptions::from(self.args.txn_options.profile_options),
+            rest_options: supra_aptos::RestOptions::from(self.args.txn_options.rest_options),
+            gas_options: supra_aptos::GasOptions::from(self.args.txn_options.gas_options),
         })
     }
 }
@@ -444,7 +475,7 @@ fn extract_proposal_id(txn: &Transaction) -> CliTypedResult<Option<u64>> {
     if let Transaction::UserTransaction(inner) = txn {
         // Find event with proposal id
         let proposal_id = if let Some(event) = inner.events.iter().find(|event| {
-            event.typ.to_string().as_str() == "0x1::supra_governance::CreateProposalEvent"
+            event.typ.to_string().as_str() == "0x1::supra_governance::SupraCreateProposalEvent"
         }) {
             let data: CreateProposalEvent =
                 serde_json::from_value(event.data.clone()).map_err(|_| {
@@ -484,8 +515,8 @@ pub struct ProposalSubmissionSummary {
 #[derive(Parser)]
 pub struct SubmitVote {
     /// Space separated list of pool addresses.
-    #[clap(long, num_args = 0.., value_parser = crate::common::types::load_account_arg)]
-    pub(crate) pool_addresses: Vec<AccountAddress>,
+    // #[clap(long, num_args = 0.., value_parser = crate::common::types::load_account_arg)]
+    // pub(crate) pool_addresses: Vec<AccountAddress>,
 
     #[clap(flatten)]
     pub(crate) args: SubmitVoteArgs,
@@ -506,188 +537,12 @@ pub struct SubmitVoteArgs {
     #[clap(long, group = "vote")]
     pub(crate) no: bool,
 
-    /// Voting power to use for the vote.  If not specified, all the voting power will be used.
-    #[clap(long)]
-    pub(crate) voting_power: Option<u64>,
+    // Voting power to use for the vote.  If not specified, all the voting power will be used.
+    // #[clap(long)]
+    // pub(crate) voting_power: Option<u64>,
 
     #[clap(flatten)]
     pub(crate) txn_options: TransactionOptions,
-}
-
-impl SubmitVote {
-    // Partial governance voting is controlled by a feature flag. If the feature flag is on, the way
-    // to check voting power will be different.
-    async fn vote_before_partial_governance_voting(
-        &self,
-        client: &Client,
-        vote: bool,
-    ) -> CliTypedResult<Vec<TransactionSummary>> {
-        if self.args.voting_power.is_some() {
-            return Err(CliError::CommandArgumentError(
-                "Specifying voting power is not supported before partial governance voting feature flag is enabled".to_string(),
-            ));
-        };
-
-        let proposal_id = self.args.proposal_id;
-        let voting_records = client
-            .get_account_resource_bcs::<VotingRecords>(
-                CORE_CODE_ADDRESS,
-                "0x1::supra_governance::VotingRecords",
-            )
-            .await
-            .unwrap()
-            .into_inner()
-            .votes;
-
-        let mut summaries: Vec<TransactionSummary> = vec![];
-        for pool_address in &self.pool_addresses {
-            let voting_record = client
-                .get_table_item(
-                    voting_records,
-                    "0x1::supra_governance::RecordKey",
-                    "bool",
-                    VotingRecord {
-                        proposal_id: proposal_id.to_string(),
-                        stake_pool: *pool_address,
-                    },
-                )
-                .await;
-            let voted = if let Ok(voting_record) = voting_record {
-                voting_record.into_inner().as_bool().unwrap()
-            } else {
-                false
-            };
-            if voted {
-                println!("Stake pool {} already voted", *pool_address);
-                continue;
-            }
-
-            let stake_pool = client
-                .get_account_resource_bcs::<StakePool>(*pool_address, "0x1::stake::StakePool")
-                .await?
-                .into_inner();
-            let voting_power = stake_pool.get_governance_voting_power();
-
-            prompt_yes_with_override(
-                &format!(
-                    "Vote {} with voting power = {} from stake pool {}?",
-                    vote_to_string(vote),
-                    voting_power,
-                    pool_address
-                ),
-                self.args.txn_options.prompt_options,
-            )?;
-
-            summaries.push(
-                self.args
-                    .txn_options
-                    .submit_transaction(aptos_stdlib::supra_governance_vote(
-                        *pool_address,
-                        proposal_id,
-                        vote,
-                    ))
-                    .await
-                    .map(TransactionSummary::from)?,
-            );
-        }
-        Ok(summaries)
-    }
-
-    // Partial governance voting is controlled by a feature flag. If the feature flag is on, the way
-    // to check voting power will be different.
-    async fn vote_after_partial_governance_voting(
-        &self,
-        vote: bool,
-    ) -> CliTypedResult<Vec<TransactionSummary>> {
-        if self.args.voting_power.is_some() && self.pool_addresses.len() > 1 {
-            return Err(CliError::CommandArgumentError(
-                "Only 1 pool address can be provided when voting power is specified".to_string(),
-            ));
-        };
-        let proposal_id = self.args.proposal_id;
-        let is_proposal_closed = self
-            .args
-            .txn_options
-            .view(ViewFunction {
-                module: ModuleId::new(AccountAddress::ONE, ident_str!("voting").to_owned()),
-                function: ident_str!("is_voting_closed").to_owned(),
-                ty_args: vec![
-                    parse_type_tag("0x1::governance_proposal::GovernanceProposal").unwrap(),
-                ],
-                args: vec![
-                    bcs::to_bytes(&AccountAddress::ONE).unwrap(),
-                    bcs::to_bytes(&proposal_id).unwrap(),
-                ],
-            })
-            .await?[0]
-            .as_bool()
-            .unwrap();
-        if is_proposal_closed {
-            return Err(CliError::CommandArgumentError(format!(
-                "Proposal {} is closed.",
-                proposal_id
-            )));
-        };
-
-        let mut summaries: Vec<TransactionSummary> = vec![];
-        for pool_address in &self.pool_addresses {
-            let remaining_voting_power = self
-                .args
-                .txn_options
-                .view(ViewFunction {
-                    module: ModuleId::new(
-                        AccountAddress::ONE,
-                        ident_str!("supra_governance").to_owned(),
-                    ),
-                    function: ident_str!("get_remaining_voting_power").to_owned(),
-                    ty_args: vec![],
-                    args: vec![
-                        bcs::to_bytes(&pool_address).unwrap(),
-                        bcs::to_bytes(&proposal_id).unwrap(),
-                    ],
-                })
-                .await?[0]
-                .as_str()
-                .unwrap()
-                .parse()
-                .unwrap();
-            if remaining_voting_power == 0 {
-                println!(
-                    "Stake pool {} has no voting power on proposal {}. This is because the \
-                    stake pool has already voted before enabling partial governance voting, or the \
-                    stake pool has already used all its voting power.",
-                    *pool_address, proposal_id
-                );
-                continue;
-            }
-            let voting_power =
-                check_remaining_voting_power(remaining_voting_power, self.args.voting_power);
-
-            prompt_yes_with_override(
-                &format!(
-                    "Vote {} with voting power = {} from stake pool {}?",
-                    vote_to_string(vote),
-                    voting_power,
-                    pool_address
-                ),
-                self.args.txn_options.prompt_options,
-            )?;
-
-            summaries.push(
-                self.args
-                    .txn_options
-                    .submit_transaction(aptos_stdlib::supra_governance_partial_vote(
-                        *pool_address,
-                        proposal_id,
-                        voting_power,
-                        vote,
-                    ))
-                    .await
-                    .map(TransactionSummary::from)?,
-            );
-        }
-        Ok(summaries)
-    }
 }
 
 #[async_trait]
@@ -699,25 +554,46 @@ impl CliCommand<Vec<TransactionSummary>> for SubmitVote {
     async fn execute(mut self) -> CliTypedResult<Vec<TransactionSummary>> {
         // The vote option is a group, so only one of yes and no must be true.
         let vote = self.args.yes;
+        let proposal_id = self.args.proposal_id;
 
-        let client: &Client = &self
-            .args
-            .txn_options
-            .rest_options
-            .client(&self.args.txn_options.profile_options)?;
+        let mut summaries: Vec<TransactionSummary> = vec![];
+        summaries.push(
+            self.args
+                .txn_options
+                .submit_transaction(aptos_stdlib::supra_governance_supra_vote(
+                    proposal_id,
+                    vote,
+                ))
+                .await
+                .map(TransactionSummary::from)?,
+        );
+        Ok(summaries)
+    }
+}
 
-        if is_partial_governance_voting_enabled(client).await? {
-            self.vote_after_partial_governance_voting(vote).await
-        } else {
-            return self
-                .vote_before_partial_governance_voting(client, vote)
-                .await;
-        }
+#[async_trait]
+impl SupraCommand for SubmitVote {
+    async fn supra_command_arguments(self) -> anyhow::Result<SupraCommandArguments> {
+        // The vote option is a group, so only one of yes and no must be true.
+        let vote = self.args.yes;
+        let proposal_id = self.args.proposal_id;
+
+        let payload = aptos_stdlib::supra_governance_supra_vote(
+            proposal_id,
+            vote,
+        );
+        Ok(SupraCommandArguments {
+            payload,
+            sender_account: self.args.txn_options.sender_account,
+            profile_options: supra_aptos::ProfileOptions::from(self.args.txn_options.profile_options),
+            rest_options: supra_aptos::RestOptions::from(self.args.txn_options.rest_options),
+            gas_options: supra_aptos::GasOptions::from(self.args.txn_options.gas_options),
+        })
     }
 }
 
 /// Submit a transaction to approve a proposal's script hash to bypass the transaction size limit.
-/// This is needed for upgrading large packages such as aptos-framework.
+/// This is needed for upgrading large packages such as supra-framework.
 #[derive(Parser)]
 pub struct ApproveExecutionHash {
     /// Id of the proposal to vote on
@@ -738,17 +614,25 @@ impl CliCommand<TransactionSummary> for ApproveExecutionHash {
         Ok(self
             .txn_options
             .submit_transaction(
-                aptos_stdlib::supra_governance_add_approved_script_hash_script(self.proposal_id),
+                aptos_stdlib::supra_governance_add_supra_approved_script_hash_script(self.proposal_id),
             )
             .await
             .map(TransactionSummary::from)?)
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct VotingRecord {
-    proposal_id: String,
-    stake_pool: AccountAddress,
+#[async_trait]
+impl SupraCommand for ApproveExecutionHash {
+    async fn supra_command_arguments(self) -> anyhow::Result<SupraCommandArguments> {
+        let payload =  aptos_stdlib::supra_governance_add_supra_approved_script_hash_script(self.proposal_id);
+        Ok(SupraCommandArguments{
+            payload,
+            sender_account: self.txn_options.sender_account,
+            profile_options: supra_aptos::ProfileOptions::from(self.txn_options.profile_options),
+            rest_options: supra_aptos::RestOptions::from(self.txn_options.rest_options),
+            gas_options: supra_aptos::GasOptions::from(self.txn_options.gas_options),
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -881,6 +765,27 @@ impl CliCommand<TransactionSummary> for ExecuteProposal {
             .submit_transaction(txn)
             .await
             .map(TransactionSummary::from)
+    }
+}
+
+#[async_trait]
+impl SupraCommand for ExecuteProposal {
+    async fn supra_command_arguments(self) -> anyhow::Result<SupraCommandArguments> {
+        let (bytecode, _script_hash) = self
+            .compile_proposal_args
+            .compile("ExecuteProposal", self.txn_options.prompt_options)?;
+        // TODO: Check hash so we don't do a failed roundtrip?
+
+        let args = vec![TransactionArgument::U64(self.proposal_id)];
+        let payload = TransactionPayload::Script(Script::new(bytecode, vec![], args));
+
+        Ok(SupraCommandArguments{
+            payload,
+            sender_account: self.txn_options.sender_account,
+            profile_options: supra_aptos::ProfileOptions::from(self.txn_options.profile_options),
+            rest_options: supra_aptos::RestOptions::from(self.txn_options.rest_options),
+            gas_options: supra_aptos::GasOptions::from(self.txn_options.gas_options),
+        })
     }
 }
 
@@ -1050,11 +955,11 @@ impl GenerateExecutionHash {
                 path.pop();
                 path.join("aptos-move")
                     .join("framework")
-                    .join("aptos-framework")
+                    .join("supra-framework")
                     .canonicalize()
                     .map_err(|err| {
                         CliError::IO(
-                            format!("Failed to canonicalize aptos framework path: {:?}", path),
+                            format!("Failed to canonicalize supra framework path: {:?}", path),
                             err,
                         )
                     })?
