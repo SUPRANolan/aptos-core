@@ -118,7 +118,8 @@ pub fn default_gas_schedule() -> GasScheduleV2 {
 
 pub fn encode_aptos_mainnet_genesis_transaction(
     accounts: &[AccountBalance],
-    multisig_accounts: &[MultiSigAccount],
+    multisig_accounts: &[MultiSigAccountWithBalance],
+    owner_group: Option<MultipleMultiSigAccountWithBalance>,
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
@@ -160,7 +161,12 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     initialize_supra_coin(&mut session);
     initialize_on_chain_governance(&mut session, genesis_config);
     create_accounts(&mut session, accounts);
-    create_multisig_accounts(&mut session, multisig_accounts);
+
+    if let Some(owner_group) = owner_group {
+        create_multiple_multisig_accounts_with_balance(&mut session, owner_group);
+    }
+
+    create_multisig_accounts_with_balance(&mut session, multisig_accounts);
 
     // All PBO delegated validators are initialized here
     create_pbo_delegation_pools(&mut session, delegation_pools);
@@ -223,6 +229,7 @@ pub fn encode_genesis_transaction(
         &aptos_root_key,
         &[],
         &[],
+        None,
         validators,
         delegation_pools,
         vesting_pools,
@@ -238,7 +245,8 @@ pub fn encode_genesis_transaction(
 pub fn encode_genesis_change_set(
     core_resources_key: &Ed25519PublicKey,
     accounts: &[AccountBalance],
-    multisig_account: &[MultiSigAccount],
+    multisig_account: &[MultiSigAccountWithBalance],
+    owner_group: Option<MultipleMultiSigAccountWithBalance>,
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
@@ -297,7 +305,7 @@ pub fn encode_genesis_change_set(
 
     create_accounts(&mut session, accounts);
 
-    create_multisig_accounts(&mut session, multisig_account);
+    create_multisig_accounts_with_balance(&mut session, multisig_account);
 
     if validators.len() > 0 {
         create_and_initialize_validators(&mut session, validators);
@@ -765,14 +773,67 @@ fn create_and_initialize_validators_with_commission(
     );
 }
 
-fn create_multisig_accounts(
+fn create_multiple_multisig_accounts_with_balance(
     session: &mut SessionExt,
-    multisig_accounts: &[MultiSigAccount],
+    multiple_multi_sig_account_with_balance: MultipleMultiSigAccountWithBalance,
+) {
+    let mut serialized_values = serialize_values(&vec![
+        MoveValue::Signer(CORE_CODE_ADDRESS),
+    ]);
+
+    let owners_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.owner)
+        .expect("Owner for MultiSig accounts should be serializable");
+    serialized_values.push(owners_bytes);
+
+    let additional_owners_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.additional_owners)
+        .expect("Additional owners for MultiSig accounts should be serializable");
+    serialized_values.push(additional_owners_bytes);
+
+    let num_signatures_required_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.num_signatures_required)
+        .expect("num_signatures_required for MultiSig accounts should be serializable");
+    serialized_values.push(num_signatures_required_bytes);
+
+    let metadata_keys_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.metadata_keys)
+        .expect("metadata_keys for MultiSig accounts should be serializable");
+    serialized_values.push(metadata_keys_bytes);
+
+    let metadata_values_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.metadata_values)
+        .expect("metadata_values for MultiSig accounts should be serializable");
+    serialized_values.push(metadata_values_bytes);
+
+    let timeout_duration_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.timeout_duration)
+        .expect("timeout_duration for MultiSig accounts should be serializable");
+    serialized_values.push(timeout_duration_bytes);
+
+    let balance_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.balance)
+        .expect("balance for MultiSig accounts should be serializable");
+    serialized_values.push(balance_bytes);
+
+    let num_of_accounts_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.num_of_accounts)
+        .expect("num_of_accounts for MultiSig accounts should be serializable");
+    serialized_values.push(num_of_accounts_bytes);
+
+    exec_function(
+        session,
+        GENESIS_MODULE_NAME,
+        "create_multiple_multisig_accounts_with_schema",
+        vec![],
+        serialized_values,
+    );
+}
+
+fn create_multisig_accounts_with_balance(
+    session: &mut SessionExt,
+    multisig_accounts: &[MultiSigAccountWithBalance],
 ) {
     for account_configuration in multisig_accounts {
         let mut serialized_values = serialize_values(&vec![
-            MoveValue::Signer(account_configuration.owner),
+            MoveValue::Signer(CORE_CODE_ADDRESS),
         ]);
+
+        let owners_bytes = bcs::to_bytes(&account_configuration.owner)
+            .expect("Owner for MultiSig accounts should be serializable");
+        serialized_values.push(owners_bytes);
 
         let additional_owners_bytes = bcs::to_bytes(&account_configuration.additional_owners)
             .expect("Additional owners for MultiSig accounts should be serializable");
@@ -794,10 +855,14 @@ fn create_multisig_accounts(
             .expect("Timeout duration for MultiSig accounts should be serializable");
         serialized_values.push(timeout_duration_bytes);
 
+        let balance_bytes = bcs::to_bytes(&account_configuration.balance)
+            .expect("Timeout duration for MultiSig accounts should be serializable");
+        serialized_values.push(balance_bytes);
+
         exec_function(
             session,
-            MULTISIG_ACC_MODULE_NAME,
-            "create_with_owners",
+            GENESIS_MODULE_NAME,
+            "create_multisig_account_with_balance",
             vec![],
             serialized_values,
         );
@@ -1062,6 +1127,7 @@ pub fn generate_test_genesis(
         &GENESIS_KEYPAIR.1,
         &[],
         &[],
+        None,
         validators,
         &[],
         &[],
@@ -1112,6 +1178,7 @@ pub fn generate_mainnet_genesis(
         &GENESIS_KEYPAIR.1,
         &[],
         &[],
+        None,
         validators,
         &[],
         &[],
@@ -1228,20 +1295,34 @@ pub struct VestingPoolsMap {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
-pub struct MultiSigAccount {
+pub struct MultiSigAccountWithBalance {
+    pub owner: AccountAddress,
+    pub additional_owners: Vec<AccountAddress>,
+    pub multisig_address: AccountAddress,
+    pub num_signatures_required: u64,
+    pub metadata_keys: Vec<String>,
+    pub metadata_values: Vec<Vec<u8>>,
+    pub timeout_duration: u64,
+    pub balance: u64,
+}
+
+impl Hash for MultiSigAccountWithBalance {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(&self.multisig_address.to_vec());
+        state.finish();
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+pub struct MultipleMultiSigAccountWithBalance {
     pub owner: AccountAddress,
     pub additional_owners: Vec<AccountAddress>,
     pub num_signatures_required: u64,
     pub metadata_keys: Vec<String>,
     pub metadata_values: Vec<Vec<u8>>,
     pub timeout_duration: u64,
-}
-
-impl Hash for MultiSigAccount {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(&self.owner.to_vec());
-        state.finish();
-    }
+    pub balance: u64,
+    pub num_of_accounts: u64,
 }
 
 #[test]
@@ -1690,6 +1771,7 @@ pub fn test_mainnet_end_to_end() {
     let transaction = encode_aptos_mainnet_genesis_transaction(
         &accounts,
         &[],
+        None,
         &pbo_delegator_configs,
         &[employee_vesting_config1],
         aptos_cached_packages::head_release_bundle(),

@@ -126,6 +126,7 @@ impl MainnetGenesisInfo {
         aptos_vm_genesis::encode_aptos_mainnet_genesis_transaction(
             &self.accounts,
             &[],
+            None,
             &[],
             &[],
             &self.framework,
