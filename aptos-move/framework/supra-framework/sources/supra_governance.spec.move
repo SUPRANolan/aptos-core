@@ -6,7 +6,7 @@ spec supra_framework::supra_governance {
     /// Implementation: The create_proposal function internally calls create_proposal_v2.
     /// Enforcement: This is manually audited to ensure create_proposal_v2 is called in create_proposal.
     ///
-    /// No.: 2
+    /// No.: 2 (No longer needed for supra)
     /// Requirement: The proposer must have a stake equal to or greater than the required bond amount.
     /// Criticality: High
     /// Implementation: The create_proposal_v2 function verifies that the stake balance equals or exceeds the required
@@ -28,8 +28,9 @@ spec supra_framework::supra_governance {
     /// </high-level-req>
     ///
     spec module {
-        pragma verify = false;
-        pragma aborts_if_is_strict;
+        pragma verify = true;
+        //TODO: uncomment this condition
+        // pragma aborts_if_is_strict;
     }
 
     spec store_signer_cap(
@@ -59,11 +60,12 @@ spec supra_framework::supra_governance {
         voters: vector<address>,
     ) {
         use aptos_std::type_info::Self;
-
+        //TODO: Remove pragma aborts_if_is_partial;
+        pragma aborts_if_is_partial = true;
         let addr = signer::address_of(supra_framework);
         let register_account = global<account::Account>(addr);
 
-        aborts_if exists<voting::VotingForum<GovernanceProposal>>(addr);
+        aborts_if exists<multisig_voting::VotingForum<GovernanceProposal>>(addr);
         aborts_if !exists<account::Account>(addr);
         aborts_if register_account.guid_creation_num + 7 > MAX_U64;
         aborts_if register_account.guid_creation_num + 7 >= account::MAX_GUID_CREATION_NUM;
@@ -71,10 +73,9 @@ spec supra_framework::supra_governance {
 
         include InitializeAbortIf;
 
-        ensures exists<voting::VotingForum<governance_proposal::GovernanceProposal>>(addr);
-        ensures exists<GovernanceConfig>(addr);
-        ensures exists<GovernanceEvents>(addr);
-        ensures exists<VotingRecords>(addr);
+        ensures exists<multisig_voting::VotingForum<governance_proposal::GovernanceProposal>>(addr);
+        ensures exists<SupraGovernanceConfig>(addr);
+        ensures exists<SupraGovernanceEvents>(addr);
         ensures exists<ApprovedExecutionHashes>(addr);
     }
 
@@ -92,16 +93,14 @@ spec supra_framework::supra_governance {
     spec schema InitializeAbortIf {
         supra_framework: &signer;
         min_voting_threshold: u128;
-        required_proposer_stake: u64;
+        voters: vector<address>;
         voting_duration_secs: u64;
 
         let addr = signer::address_of(supra_framework);
         let account = global<account::Account>(addr);
-        aborts_if addr != @supra_framework;
-        aborts_if exists<voting::VotingForum<governance_proposal::GovernanceProposal>>(addr);
-        aborts_if exists<GovernanceConfig>(addr);
-        aborts_if exists<GovernanceEvents>(addr);
-        aborts_if exists<VotingRecords>(addr);
+        aborts_if exists<multisig_voting::VotingForum<governance_proposal::GovernanceProposal>>(addr);
+        aborts_if exists<SupraGovernanceConfig>(addr);
+        aborts_if exists<SupraGovernanceEvents>(addr);
         aborts_if exists<ApprovedExecutionHashes>(addr);
         aborts_if !exists<account::Account>(addr);
     }
@@ -184,6 +183,7 @@ spec supra_framework::supra_governance {
     ) {
         use supra_framework::chain_status;
         pragma verify_duration_estimate = 60;
+
         requires chain_status::is_operating();
         include CreateProposalAbortsIf;
     }
@@ -197,6 +197,7 @@ spec supra_framework::supra_governance {
         is_multi_step_proposal: bool,
     ) {
         use supra_framework::chain_status;
+
         pragma verify_duration_estimate = 60;
         requires chain_status::is_operating();
         include CreateProposalAbortsIf;
@@ -308,6 +309,17 @@ spec supra_framework::supra_governance {
         };
     }
 
+    spec supra_vote (
+        voter: &signer,
+        proposal_id: u64,
+        should_pass: bool,
+    ) {
+        use supra_framework::chain_status;
+        pragma verify_duration_estimate = 60;
+
+        requires chain_status::is_operating();
+    }
+
     /// stake_pool must exist StakePool.
     /// The delegated voter under the resource StakePool of the stake_pool must be the voter address.
     /// Address @supra_framework must exist VotingRecords and GovernanceProposal.
@@ -326,6 +338,18 @@ spec supra_framework::supra_governance {
         include VoteAbortIf;
     }
 
+    spec supra_vote_internal (
+        voter: &signer,
+        proposal_id: u64,
+        should_pass: bool,
+    ) {
+        use supra_framework::chain_status;
+        pragma verify_duration_estimate = 60;
+
+        requires chain_status::is_operating();
+        include SupraVoteAbortIf;
+    }
+
     /// stake_pool must exist StakePool.
     /// The delegated voter under the resource StakePool of the stake_pool must be the voter address.
     /// Address @supra_framework must exist VotingRecords and GovernanceProposal.
@@ -342,6 +366,15 @@ spec supra_framework::supra_governance {
 
         requires chain_status::is_operating();
         include VoteAbortIf;
+    }
+
+    spec schema SupraVoteAbortIf {
+        voter: &signer;
+        proposal_id: u64;
+        should_pass: bool;
+
+        aborts_if spec_proposal_expiration <= timestamp::now_seconds() && !exists<timestamp::CurrentTimeMicroseconds>(@supra_framework);
+        let spec_proposal_expiration = multisig_voting::spec_get_proposal_expiration_secs<GovernanceProposal>(@supra_framework, proposal_id);
     }
 
     spec schema VoteAbortIf {
@@ -488,6 +521,7 @@ spec supra_framework::supra_governance {
     }
 
     spec add_approved_script_hash(proposal_id: u64) {
+
         use supra_framework::chain_status;
 
         requires chain_status::is_operating();
@@ -496,7 +530,6 @@ spec supra_framework::supra_governance {
 
     spec add_approved_script_hash_script(proposal_id: u64) {
         use supra_framework::chain_status;
-
         requires chain_status::is_operating();
         include AddApprovedScriptHash;
     }
@@ -529,7 +562,6 @@ spec supra_framework::supra_governance {
         use supra_framework::chain_status;
 
         requires chain_status::is_operating();
-
         // verify voting::resolve
         include VotingIsProposalResolvableAbortsif;
 
@@ -635,6 +667,7 @@ spec supra_framework::supra_governance {
     }
 
     spec get_remaining_voting_power(stake_pool: address, proposal_id: u64): u64 {
+
         aborts_if features::spec_partial_governance_voting_enabled() && !exists<VotingRecordsV2>(@supra_framework);
         include voting::AbortsIfNotContainProposalID<GovernanceProposal> {
             voting_forum_address: @supra_framework
