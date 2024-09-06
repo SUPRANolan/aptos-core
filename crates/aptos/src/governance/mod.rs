@@ -8,7 +8,7 @@ use crate::common::utils::read_from_file;
 use crate::{
     common::{
         types::{
-            CliError, CliTypedResult, MovePackageDir, PoolAddressArgs, ProfileOptions,
+            CliError, CliTypedResult, MovePackageDir, ProfileOptions,
             PromptOptions, RestOptions, TransactionOptions, TransactionSummary,
         },
         utils::prompt_yes_with_override,
@@ -511,8 +511,8 @@ pub struct ProposalSubmissionSummary {
 #[derive(Parser)]
 pub struct SubmitVote {
     /// Space separated list of pool addresses.
-    // #[clap(long, num_args = 0.., value_parser = crate::common::types::load_account_arg)]
-    // pub(crate) pool_addresses: Vec<AccountAddress>,
+    #[clap(long, num_args = 0.., value_parser = crate::common::types::load_account_arg)]
+    pub(crate) pool_addresses: Vec<AccountAddress>,
 
     #[clap(flatten)]
     pub(crate) args: SubmitVoteArgs,
@@ -534,8 +534,8 @@ pub struct SubmitVoteArgs {
     pub(crate) no: bool,
 
     // Voting power to use for the vote.  If not specified, all the voting power will be used.
-    // #[clap(long)]
-    // pub(crate) voting_power: Option<u64>,
+    #[clap(long)]
+    pub(crate) voting_power: Option<u64>,
 
     #[clap(flatten)]
     pub(crate) txn_options: TransactionOptions,
@@ -727,6 +727,12 @@ impl CliCommand<Vec<TransactionSummary>> for SubmitVote {
         );
         Ok(summaries)
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VotingRecord {
+    proposal_id: String,
+    stake_pool: AccountAddress,
 }
 
 #[async_trait]

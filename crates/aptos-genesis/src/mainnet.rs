@@ -145,7 +145,6 @@ impl MainnetGenesisInfo {
                 required_proposer_stake: self.required_proposer_stake,
                 rewards_apy_percentage: self.rewards_apy_percentage,
                 voting_duration_secs: self.voting_duration_secs,
-                voters: vec![],
                 voting_power_increase_limit: self.voting_power_increase_limit,
                 voters: Vec::new(),
                 genesis_timestamp_in_microseconds: self.genesis_timestamp_in_microseconds,
