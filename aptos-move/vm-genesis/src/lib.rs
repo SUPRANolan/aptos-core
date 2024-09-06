@@ -119,7 +119,7 @@ pub fn default_gas_schedule() -> GasScheduleV2 {
 pub fn encode_aptos_mainnet_genesis_transaction(
     accounts: &[AccountBalance],
     multisig_accounts: &[MultiSigAccountWithBalance],
-    owner_group: Option<MultipleMultiSigAccountWithBalance>,
+    owner_group: Option<MultiSigAccountSchema>,
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
@@ -163,7 +163,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     create_accounts(&mut session, accounts);
 
     if let Some(owner_group) = owner_group {
-        create_multiple_multisig_accounts_with_balance(&mut session, owner_group);
+        create_multiple_multisig_accounts_with_schema(&mut session, owner_group);
     }
 
     create_multisig_accounts_with_balance(&mut session, multisig_accounts);
@@ -246,7 +246,7 @@ pub fn encode_genesis_change_set(
     core_resources_key: &Ed25519PublicKey,
     accounts: &[AccountBalance],
     multisig_account: &[MultiSigAccountWithBalance],
-    owner_group: Option<MultipleMultiSigAccountWithBalance>,
+    owner_group: Option<MultiSigAccountSchema>,
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
@@ -308,7 +308,7 @@ pub fn encode_genesis_change_set(
     create_multisig_accounts_with_balance(&mut session, multisig_account);
 
     if let Some(owner_group) = owner_group {
-        create_multiple_multisig_accounts_with_balance(&mut session, owner_group);
+        create_multiple_multisig_accounts_with_schema(&mut session, owner_group);
     }
 
     if validators.len() > 0 {
@@ -777,20 +777,20 @@ fn create_and_initialize_validators_with_commission(
     );
 }
 
-fn create_multiple_multisig_accounts_with_balance(
+fn create_multiple_multisig_accounts_with_schema(
     session: &mut SessionExt,
-    multiple_multi_sig_account_with_balance: MultipleMultiSigAccountWithBalance,
+    multiple_multi_sig_account_with_balance: MultiSigAccountSchema,
 ) {
     let mut serialized_values = serialize_values(&vec![
         MoveValue::Signer(CORE_CODE_ADDRESS),
     ]);
 
     let owners_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.owner)
-        .expect("Owner for MultiSig accounts should be serializable");
+        .expect("Owner address for MultiSig accounts should be serializable");
     serialized_values.push(owners_bytes);
 
     let additional_owners_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.additional_owners)
-        .expect("Additional owners for MultiSig accounts should be serializable");
+        .expect("Additional owners addresses for MultiSig accounts should be serializable");
     serialized_values.push(additional_owners_bytes);
 
     let num_signatures_required_bytes = bcs::to_bytes(&multiple_multi_sig_account_with_balance.num_signatures_required)
@@ -1318,7 +1318,7 @@ impl Hash for MultiSigAccountWithBalance {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
-pub struct MultipleMultiSigAccountWithBalance {
+pub struct MultiSigAccountSchema {
     pub owner: AccountAddress,
     pub additional_owners: Vec<AccountAddress>,
     pub num_signatures_required: u64,
