@@ -307,6 +307,10 @@ pub fn encode_genesis_change_set(
 
     create_multisig_accounts_with_balance(&mut session, multisig_account);
 
+    if let Some(owner_group) = owner_group {
+        create_multiple_multisig_accounts_with_balance(&mut session, owner_group);
+    }
+
     if validators.len() > 0 {
         create_and_initialize_validators(&mut session, validators);
     } else {
@@ -1322,7 +1326,7 @@ pub struct MultipleMultiSigAccountWithBalance {
     pub metadata_values: Vec<Vec<u8>>,
     pub timeout_duration: u64,
     pub balance: u64,
-    pub num_of_accounts: u64,
+    pub num_of_accounts: u32,
 }
 
 #[test]
