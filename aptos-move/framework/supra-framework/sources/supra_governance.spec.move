@@ -17,13 +17,12 @@ spec supra_framework::supra_governance {
     /// proposal can be resolved.
     /// Criticality: Medium
     /// Implementation: The add_approved_script_hash function asserts that proposal_state == PROPOSAL_STATE_SUCCEEDED.
-    /// Enforcement: Formally verified in [high-level-req-4](AddApprovedScriptHash).
+    /// Enforcement: Formally verified in [high-level-req-3](AddApprovedScriptHash).
     /// </high-level-req>
     ///
     spec module {
         pragma verify = true;
-        //TODO: uncomment this condition
-        // pragma aborts_if_is_strict;
+        pragma aborts_if_is_strict;
     }
 
     spec store_signer_cap(
@@ -53,12 +52,11 @@ spec supra_framework::supra_governance {
         voters: vector<address>,
     ) {
         use aptos_std::type_info::Self;
-        //TODO: Remove pragma aborts_if_is_partial;
-        pragma aborts_if_is_partial = true;
         let addr = signer::address_of(supra_framework);
         let register_account = global<account::Account>(addr);
-
         aborts_if exists<multisig_voting::VotingForum<GovernanceProposal>>(addr);
+        aborts_if min_voting_threshold <= 1;
+        aborts_if !(vector::length(voters) >= min_voting_threshold && min_voting_threshold > vector::length(voters) / 2);
         aborts_if !exists<account::Account>(addr);
         aborts_if register_account.guid_creation_num + 7 > MAX_U64;
         aborts_if register_account.guid_creation_num + 7 >= account::MAX_GUID_CREATION_NUM;
@@ -95,8 +93,8 @@ spec supra_framework::supra_governance {
         min_voting_threshold: u64,
         voters: vector<address>,
     ) {
-        //TODO: Remove pragma aborts_if_is_partial;
-        pragma aborts_if_is_partial = true;
+        aborts_if min_voting_threshold <= 1;
+        aborts_if !(vector::length(voters) >= min_voting_threshold && min_voting_threshold > vector::length(voters) / 2);
         let addr = signer::address_of(supra_framework);
         let governance_config = global<SupraGovernanceConfig>(@supra_framework);
 
@@ -139,6 +137,10 @@ spec supra_framework::supra_governance {
     }
 
     spec get_min_voting_threshold(): u64 {
+        include AbortsIfNotGovernanceConfig;
+    }
+
+    spec get_voters_list(): vector<address> {
         include AbortsIfNotGovernanceConfig;
     }
 
@@ -475,8 +477,6 @@ spec supra_framework::supra_governance {
         use aptos_std::table;
 
         requires chain_status::is_operating();
-        //TODO: Remove pragma aborts_if_is_partial;
-        pragma aborts_if_is_partial = true;
 
         // TODO: These function passed locally however failed in github CI
         pragma verify_duration_estimate = 120;
