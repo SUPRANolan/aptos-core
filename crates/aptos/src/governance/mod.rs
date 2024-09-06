@@ -281,8 +281,6 @@ async fn get_proposal(
 /// Submit a governance proposal
 #[derive(Parser)]
 pub struct SubmitProposal {
-    // #[clap(flatten)]
-    // pub(crate) pool_address_args: PoolAddressArgs,
     #[clap(flatten)]
     pub(crate) args: SubmitProposalArgs,
 }
@@ -382,7 +380,6 @@ impl CliCommand<ProposalSubmissionSummary> for SubmitProposal {
             self.args
                 .txn_options
                 .submit_transaction(aptos_stdlib::supra_governance_supra_create_proposal_v2(
-                    // self.pool_address_args.pool_address,
                     script_hash.to_vec(),
                     self.args.metadata_url.to_string().as_bytes().to_vec(),
                     metadata_hash.to_hex().as_bytes().to_vec(),
@@ -393,7 +390,6 @@ impl CliCommand<ProposalSubmissionSummary> for SubmitProposal {
             self.args
                 .txn_options
                 .submit_transaction(aptos_stdlib::supra_governance_supra_create_proposal(
-                    // self.pool_address_args.pool_address,
                     script_hash.to_vec(),
                     self.args.metadata_url.to_string().as_bytes().to_vec(),
                     metadata_hash.to_hex().as_bytes().to_vec(),
@@ -543,6 +539,168 @@ pub struct SubmitVoteArgs {
 
     #[clap(flatten)]
     pub(crate) txn_options: TransactionOptions,
+}
+
+impl SubmitVote {
+    // Partial governance voting is controlled by a feature flag. If the feature flag is on, the way
+    // to check voting power will be different.
+    async fn vote_before_partial_governance_voting(
+        &self,
+        client: &Client,
+        vote: bool,
+    ) -> CliTypedResult<Vec<TransactionSummary>> {
+        if self.args.voting_power.is_some() {
+            return Err(CliError::CommandArgumentError(
+                "Specifying voting power is not supported before partial governance voting feature flag is enabled".to_string(),
+            ));
+        };
+
+        let proposal_id = self.args.proposal_id;
+        let voting_records = client
+            .get_account_resource_bcs::<VotingRecords>(
+                CORE_CODE_ADDRESS,
+                "0x1::supra_governance::VotingRecords",
+            )
+            .await
+            .unwrap()
+            .into_inner()
+            .votes;
+
+        let mut summaries: Vec<TransactionSummary> = vec![];
+        for pool_address in &self.pool_addresses {
+            let voting_record = client
+                .get_table_item(
+                    voting_records,
+                    "0x1::supra_governance::RecordKey",
+                    "bool",
+                    VotingRecord {
+                        proposal_id: proposal_id.to_string(),
+                        stake_pool: *pool_address,
+                    },
+                )
+                .await;
+            let voted = if let Ok(voting_record) = voting_record {
+                voting_record.into_inner().as_bool().unwrap()
+            } else {
+                false
+            };
+            if voted {
+                println!("Stake pool {} already voted", *pool_address);
+                continue;
+            }
+
+            let stake_pool = client
+                .get_account_resource_bcs::<StakePool>(*pool_address, "0x1::stake::StakePool")
+                .await?
+                .into_inner();
+            let voting_power = stake_pool.get_governance_voting_power();
+
+            prompt_yes_with_override(
+                &format!(
+                    "Vote {} with voting power = {} from stake pool {}?",
+                    vote_to_string(vote),
+                    voting_power,
+                    pool_address
+                ),
+                self.args.txn_options.prompt_options,
+            )?;
+
+            summaries.push(
+                self.args
+                    .txn_options
+                    .submit_transaction(aptos_stdlib::supra_governance_supra_vote(
+                        proposal_id,
+                        vote,
+                    ))
+                    .await
+                    .map(TransactionSummary::from)?,
+            );
+        }
+        Ok(summaries)
+    }
+
+    // Partial governance voting is controlled by a feature flag. If the feature flag is on, the way
+    // to check voting power will be different.
+    async fn vote_after_partial_governance_voting(
+        &self,
+        vote: bool,
+    ) -> CliTypedResult<Vec<TransactionSummary>> {
+        if self.args.voting_power.is_some() && self.pool_addresses.len() > 1 {
+            return Err(CliError::CommandArgumentError(
+                "Only 1 pool address can be provided when voting power is specified".to_string(),
+            ));
+        };
+        let proposal_id = self.args.proposal_id;
+        let is_proposal_closed = self
+            .args
+            .txn_options
+            .view(ViewFunction {
+                module: ModuleId::new(AccountAddress::ONE, ident_str!("voting").to_owned()),
+                function: ident_str!("is_voting_closed").to_owned(),
+                ty_args: vec![
+                    parse_type_tag("0x1::governance_proposal::GovernanceProposal").unwrap(),
+                ],
+                args: vec![
+                    bcs::to_bytes(&AccountAddress::ONE).unwrap(),
+                    bcs::to_bytes(&proposal_id).unwrap(),
+                ],
+            })
+            .await?[0]
+            .as_bool()
+            .unwrap();
+        if is_proposal_closed {
+            return Err(CliError::CommandArgumentError(format!(
+                "Proposal {} is closed.",
+                proposal_id
+            )));
+        };
+
+        let mut summaries: Vec<TransactionSummary> = vec![];
+        for pool_address in &self.pool_addresses {
+            let remaining_voting_power = self
+                .args
+                .txn_options
+                .view(ViewFunction {
+                    module: ModuleId::new(
+                        AccountAddress::ONE,
+                        ident_str!("supra_governance").to_owned(),
+                    ),
+                    function: ident_str!("get_remaining_voting_power").to_owned(),
+                    ty_args: vec![],
+                    args: vec![
+                        bcs::to_bytes(&pool_address).unwrap(),
+                        bcs::to_bytes(&proposal_id).unwrap(),
+                    ],
+                })
+                .await?[0]
+                .as_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            if remaining_voting_power == 0 {
+                println!(
+                    "Stake pool {} has no voting power on proposal {}. This is because the \
+                    stake pool has already voted before enabling partial governance voting, or the \
+                    stake pool has already used all its voting power.",
+                    *pool_address, proposal_id
+                );
+                continue;
+            }
+            let voting_power =
+                check_remaining_voting_power(remaining_voting_power, self.args.voting_power);
+
+            prompt_yes_with_override(
+                &format!(
+                    "Vote {} with voting power = {} from stake pool {}?",
+                    vote_to_string(vote),
+                    voting_power,
+                    pool_address
+                ),
+                self.args.txn_options.prompt_options,
+            )?;
+        }
+        Ok(summaries)
+    }
 }
 
 #[async_trait]

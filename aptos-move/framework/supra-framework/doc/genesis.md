@@ -24,8 +24,6 @@
 -  [Function `create_initialize_validators_with_commission`](#0x1_genesis_create_initialize_validators_with_commission)
 -  [Function `create_initialize_validators`](#0x1_genesis_create_initialize_validators)
 -  [Function `create_initialize_validator`](#0x1_genesis_create_initialize_validator)
--  [Function `create_delegation_pools`](#0x1_genesis_create_delegation_pools)
--  [Function `create_delegation_pool`](#0x1_genesis_create_delegation_pool)
 -  [Function `create_pbo_delegation_pools`](#0x1_genesis_create_pbo_delegation_pools)
 -  [Function `create_pbo_delegation_pool`](#0x1_genesis_create_pbo_delegation_pool)
 -  [Function `assert_validator_addresses_check`](#0x1_genesis_assert_validator_addresses_check)
@@ -41,8 +39,6 @@
     -  [Function `create_initialize_validators_with_commission`](#@Specification_1_create_initialize_validators_with_commission)
     -  [Function `create_initialize_validators`](#@Specification_1_create_initialize_validators)
     -  [Function `create_initialize_validator`](#@Specification_1_create_initialize_validator)
-    -  [Function `create_delegation_pools`](#@Specification_1_create_delegation_pools)
-    -  [Function `create_delegation_pool`](#@Specification_1_create_delegation_pool)
     -  [Function `create_pbo_delegation_pools`](#@Specification_1_create_pbo_delegation_pools)
     -  [Function `create_pbo_delegation_pool`](#@Specification_1_create_pbo_delegation_pool)
     -  [Function `assert_validator_addresses_check`](#@Specification_1_assert_validator_addresses_check)
@@ -59,7 +55,6 @@
 <b>use</b> <a href="coin.md#0x1_coin">0x1::coin</a>;
 <b>use</b> <a href="consensus_config.md#0x1_consensus_config">0x1::consensus_config</a>;
 <b>use</b> <a href="create_signer.md#0x1_create_signer">0x1::create_signer</a>;
-<b>use</b> <a href="delegation_pool.md#0x1_delegation_pool">0x1::delegation_pool</a>;
 <b>use</b> <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error">0x1::error</a>;
 <b>use</b> <a href="execution_config.md#0x1_execution_config">0x1::execution_config</a>;
 <b>use</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features">0x1::features</a>;
@@ -1097,101 +1092,6 @@ encoded in a single BCS byte array.
 
 </details>
 
-<a id="0x1_genesis_create_delegation_pools"></a>
-
-## Function `create_delegation_pools`
-
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pools">create_delegation_pools</a>(delegator_configs: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="genesis.md#0x1_genesis_DelegatorConfiguration">genesis::DelegatorConfiguration</a>&gt;)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pools">create_delegation_pools</a>(
-    delegator_configs: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="genesis.md#0x1_genesis_DelegatorConfiguration">DelegatorConfiguration</a>&gt;,
-) {
-		<b>let</b> unique_accounts: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<b>address</b>&gt; = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_empty">vector::empty</a>();
-    <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_for_each_ref">vector::for_each_ref</a>(&delegator_configs, |delegator_config| {
-        <b>let</b> delegator_config: &<a href="genesis.md#0x1_genesis_DelegatorConfiguration">DelegatorConfiguration</a> = delegator_config;
-			//Ensure that there is a unique owner_address for each pool
-			//This is needed otherwise <b>move_to</b> of DelegationPoolOwnership at owner_address would fail
-			<b>assert</b>!(!<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_contains">vector::contains</a>(&unique_accounts,&delegator_config.owner_address),
-				<a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_already_exists">error::already_exists</a>(<a href="genesis.md#0x1_genesis_EDUPLICATE_ACCOUNT">EDUPLICATE_ACCOUNT</a>));
-				<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> unique_accounts,delegator_config.owner_address);
-        <a href="genesis.md#0x1_genesis_create_delegation_pool">create_delegation_pool</a>(delegator_config);
-    });
-}
-</code></pre>
-
-
-
-</details>
-
-<a id="0x1_genesis_create_delegation_pool"></a>
-
-## Function `create_delegation_pool`
-
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pool">create_delegation_pool</a>(delegator_config: &<a href="genesis.md#0x1_genesis_DelegatorConfiguration">genesis::DelegatorConfiguration</a>)
-</code></pre>
-
-
-
-<details>
-<summary>Implementation</summary>
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pool">create_delegation_pool</a>(
-    delegator_config: &<a href="genesis.md#0x1_genesis_DelegatorConfiguration">DelegatorConfiguration</a>,
-) {
-    <b>let</b> unique_accounts:<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<b>address</b>&gt; = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_empty">vector::empty</a>();
-    <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_for_each_ref">vector::for_each_ref</a>(&delegator_config.delegator_addresses, |delegator_address| {
-        <b>let</b> delegator_address: &<b>address</b> = delegator_address;
-        <b>assert</b>!(
-            !<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_contains">vector::contains</a>(&unique_accounts, delegator_address),
-            <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_already_exists">error::already_exists</a>(<a href="genesis.md#0x1_genesis_EDUPLICATE_ACCOUNT">EDUPLICATE_ACCOUNT</a>),
-        );
-        <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> unique_accounts, *delegator_address);
-    });
-    <b>let</b> owner_signer = <a href="create_signer.md#0x1_create_signer">create_signer</a>(delegator_config.owner_address);
-    <a href="delegation_pool.md#0x1_delegation_pool_initialize_delegation_pool">delegation_pool::initialize_delegation_pool</a>(
-        &owner_signer,
-        delegator_config.validator.commission_percentage,
-        delegator_config.delegation_pool_creation_seed,
-    );
-    <b>let</b> pool_address = <a href="delegation_pool.md#0x1_delegation_pool_get_owned_pool_address">delegation_pool::get_owned_pool_address</a>(delegator_config.owner_address);
-		<a href="delegation_pool.md#0x1_delegation_pool_set_operator">delegation_pool::set_operator</a>(&owner_signer,delegator_config.validator.validator_config.operator_address);
-		<a href="delegation_pool.md#0x1_delegation_pool_set_delegated_voter">delegation_pool::set_delegated_voter</a>(&owner_signer,delegator_config.validator.validator_config.voter_address);
-
-    <b>let</b> i = 0;
-    <b>while</b> (i &lt; <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&delegator_config.delegator_addresses)) {
-        <b>let</b> delegator_address = *<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_borrow">vector::borrow</a>(&delegator_config.delegator_addresses, i);
-        <b>let</b> delegator = &<a href="create_signer.md#0x1_create_signer">create_signer</a>(delegator_address);
-        <b>let</b> delegator_stake = *<a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_borrow">vector::borrow</a>(&delegator_config.delegator_stakes, i);
-        <a href="delegation_pool.md#0x1_delegation_pool_add_stake">delegation_pool::add_stake</a>(delegator, pool_address, delegator_stake);
-        i = i + 1;
-    };
-
-		<b>let</b> validator = delegator_config.validator.validator_config;
-		<a href="genesis.md#0x1_genesis_assert_validator_addresses_check">assert_validator_addresses_check</a>(&validator);
-
-    <b>if</b> (delegator_config.validator.join_during_genesis) {
-            <a href="genesis.md#0x1_genesis_initialize_validator">initialize_validator</a>(pool_address,&validator);
-        };
-
-}
-</code></pre>
-
-
-
-</details>
-
 <a id="0x1_genesis_create_pbo_delegation_pools"></a>
 
 ## Function `create_pbo_delegation_pools`
@@ -1757,38 +1657,6 @@ The last step of genesis.
 
 
 <pre><code><b>include</b> <a href="stake.md#0x1_stake_ResourceRequirement">stake::ResourceRequirement</a>;
-</code></pre>
-
-
-
-<a id="@Specification_1_create_delegation_pools"></a>
-
-### Function `create_delegation_pools`
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pools">create_delegation_pools</a>(delegator_configs: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<a href="genesis.md#0x1_genesis_DelegatorConfiguration">genesis::DelegatorConfiguration</a>&gt;)
-</code></pre>
-
-
-
-
-<pre><code><b>pragma</b> verify = <b>false</b>;
-</code></pre>
-
-
-
-<a id="@Specification_1_create_delegation_pool"></a>
-
-### Function `create_delegation_pool`
-
-
-<pre><code><b>fun</b> <a href="genesis.md#0x1_genesis_create_delegation_pool">create_delegation_pool</a>(delegator_config: &<a href="genesis.md#0x1_genesis_DelegatorConfiguration">genesis::DelegatorConfiguration</a>)
-</code></pre>
-
-
-
-
-<pre><code><b>pragma</b> verify = <b>false</b>;
 </code></pre>
 
 
