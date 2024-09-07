@@ -41,6 +41,6 @@ jobs:
       if: failure()
       uses: rtCamp/action-slack-notify@v2
       env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
         SLACK_CHANNEL: aptos-core-notifications # Specify your channel
         SLACK_MESSAGE: 'Job ${{ job.status }}: ${{ github.event.head_commit.message }}'
