@@ -71,7 +71,6 @@ const RANDOMNESS_CONFIG_SEQNUM_MODULE_NAME: &str = "randomness_config_seqnum";
 const RANDOMNESS_CONFIG_MODULE_NAME: &str = "randomness_config";
 const RANDOMNESS_MODULE_NAME: &str = "randomness";
 const RECONFIGURATION_STATE_MODULE_NAME: &str = "reconfiguration_state";
-const MULTISIG_ACC_MODULE_NAME: &str = "multisig_account";
 
 const NUM_SECONDS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 const MICRO_SECONDS_PER_SECOND: u64 = 1_000_000;
@@ -721,27 +720,6 @@ fn create_accounts(session: &mut SessionExt, accounts: &[AccountBalance]) {
     );
 }
 
-fn create_employee_validators(
-    session: &mut SessionExt,
-    employees: &[EmployeePool],
-    genesis_config: &GenesisConfiguration,
-) {
-    let employees_bytes = bcs::to_bytes(employees).expect("AccountMaps can be serialized");
-    let mut serialized_values = serialize_values(&vec![
-        MoveValue::U64(genesis_config.employee_vesting_start),
-        MoveValue::U64(genesis_config.employee_vesting_period_duration),
-    ]);
-    serialized_values.push(employees_bytes);
-
-    exec_function(
-        session,
-        GENESIS_MODULE_NAME,
-        "create_employee_validators",
-        vec![],
-        serialized_values,
-    );
-}
-
 /// Creates and initializes each validator owner and validator operator. This method creates all
 /// the required accounts, sets the validator operators for each validator owner, and sets the
 /// validator config on-chain.
@@ -753,25 +731,6 @@ fn create_and_initialize_validators(session: &mut SessionExt, validators: &[Vali
         session,
         GENESIS_MODULE_NAME,
         "create_initialize_validators",
-        vec![],
-        serialized_values,
-    );
-}
-
-fn create_and_initialize_validators_with_commission(
-    session: &mut SessionExt,
-    validators: &[ValidatorWithCommissionRate],
-) {
-    let validators_bytes = bcs::to_bytes(validators).expect("Validators can be serialized");
-    let mut serialized_values = serialize_values(&vec![
-        MoveValue::Signer(CORE_CODE_ADDRESS),
-        MoveValue::Bool(true),
-    ]);
-    serialized_values.push(validators_bytes);
-    exec_function(
-        session,
-        GENESIS_MODULE_NAME,
-        "create_initialize_validators_with_commission",
         vec![],
         serialized_values,
     );
@@ -1302,6 +1261,14 @@ pub struct VestingPoolsMap {
 pub struct MultiSigAccountWithBalance {
     pub owner: AccountAddress,
     pub additional_owners: Vec<AccountAddress>,
+    /*
+    The reason for this field to exist is for hashing it in the SMR-Moonshot to make sure that
+    we are not supplying duplicate multisig data to the Genesis encoder functions. Multiple multisig
+    addresses can be created with the same set of owners and parameters as multisig addresses depend
+    only on the primary owner and their sequence number. Therefore, as a distinguishing factor, we add
+    the multisig address to this field and use in the type's hashing function implemented below.
+    The genesis tx encoder functions need to re-written in the future to mitigate this.
+     */
     pub multisig_address: AccountAddress,
     pub num_signatures_required: u64,
     pub metadata_keys: Vec<String>,
