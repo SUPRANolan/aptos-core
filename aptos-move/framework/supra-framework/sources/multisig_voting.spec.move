@@ -132,28 +132,28 @@ spec supra_framework::multisig_voting {
         // use supra_framework::chain_status;
         // // Ensures existence of Timestamp
         // requires chain_status::is_operating();
-        // //TODO: Remove pragma aborts_if_is_partial;
-        // pragma aborts_if_is_partial = true;
+        //TODO: Remove pragma aborts_if_is_partial;
+        pragma aborts_if_is_partial = true;
         // include IsProposalResolvableAbortsIf<ProposalType>;
-        // aborts_if !std::string::spec_internal_check_utf8(IS_MULTI_STEP_PROPOSAL_KEY);
-        // let voting_forum = global<VotingForum<ProposalType>>(voting_forum_address);
-        // let proposal = table::spec_get(voting_forum.proposals, proposal_id);
-        // let multi_step_key = std::string::spec_utf8(IS_MULTI_STEP_PROPOSAL_KEY);
-        // let has_multi_step_key = simple_map::spec_contains_key(proposal.metadata, multi_step_key);
-        // aborts_if has_multi_step_key && !from_bcs::deserializable<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
-        // aborts_if has_multi_step_key && from_bcs::deserialize<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
-        //
-        // let post post_voting_forum = global<VotingForum<ProposalType>>(voting_forum_address);
-        // let post post_proposal = table::spec_get(post_voting_forum.proposals, proposal_id);
-        // aborts_if !exists<timestamp::CurrentTimeMicroseconds>(@supra_framework);
-        // // property 3: Ensure that proposal is successfully resolved.
-        // /// [high-level-req-3]
-        // ensures post_proposal.is_resolved == true;
-        // ensures post_proposal.resolution_time_secs == timestamp::spec_now_seconds();
-        //
-        // aborts_if option::spec_is_none(proposal.execution_content);
-        // ensures result == option::spec_borrow(proposal.execution_content);
-        // ensures option::spec_is_none(post_proposal.execution_content);
+        aborts_if !std::string::spec_internal_check_utf8(IS_MULTI_STEP_PROPOSAL_KEY);
+        let voting_forum = global<VotingForum<ProposalType>>(voting_forum_address);
+        let proposal = table::spec_get(voting_forum.proposals, proposal_id);
+        let multi_step_key = std::string::spec_utf8(IS_MULTI_STEP_PROPOSAL_KEY);
+        let has_multi_step_key = simple_map::spec_contains_key(proposal.metadata, multi_step_key);
+        aborts_if has_multi_step_key && !from_bcs::deserializable<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
+        aborts_if has_multi_step_key && from_bcs::deserialize<bool>(simple_map::spec_get(proposal.metadata, multi_step_key));
+
+        let post post_voting_forum = global<VotingForum<ProposalType>>(voting_forum_address);
+        let post post_proposal = table::spec_get(post_voting_forum.proposals, proposal_id);
+        aborts_if !exists<timestamp::CurrentTimeMicroseconds>(@supra_framework);
+        // property 3: Ensure that proposal is successfully resolved.
+        /// [high-level-req-3]
+        ensures post_proposal.is_resolved == true;
+        ensures post_proposal.resolution_time_secs == timestamp::spec_now_seconds();
+
+        aborts_if option::spec_is_none(proposal.execution_content);
+        ensures result == option::spec_borrow(proposal.execution_content);
+        ensures option::spec_is_none(post_proposal.execution_content);
     }
 
     spec resolve_proposal_v2 {
@@ -218,8 +218,9 @@ spec supra_framework::multisig_voting {
     }
 
     spec can_be_resolved_early {
-        // aborts_if false;
-        // ensures result == spec_can_be_resolved_early<ProposalType>(proposal);
+        //TODO: Remove pragma aborts_if_is_partial;
+        pragma aborts_if_is_partial = true;
+        ensures result == spec_can_be_resolved_early<ProposalType>(proposal);
     }
 
     spec get_proposal_metadata {
@@ -416,16 +417,11 @@ spec supra_framework::multisig_voting {
         is_voting_period_over(proposal)
     }
 
-    // spec fun spec_can_be_resolved_early<ProposalType: store>(proposal: Proposal<ProposalType>): bool {
-    //     if (option::spec_is_some(proposal.early_resolution_vote_threshold)) {
-    //         let early_resolution_threshold = option::spec_borrow(proposal.early_resolution_vote_threshold);
-    //         if (proposal.yes_votes >= early_resolution_threshold || proposal.no_votes >= early_resolution_threshold) {
-    //             true
-    //         } else{
-    //             false
-    //         }
-    //     } else {
-    //         false
-    //     }
-    // }
+    spec fun spec_can_be_resolved_early<ProposalType: store>(proposal: Proposal<ProposalType>): bool {
+        if (proposal.yes_votes >= proposal.min_vote_threshold || proposal.no_votes >= vector::length(proposal.voters) - proposal.min_vote_threshold + 1) {
+            true
+        } else {
+            false
+        }
+    }
 }
