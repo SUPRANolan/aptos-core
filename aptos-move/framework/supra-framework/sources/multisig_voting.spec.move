@@ -120,18 +120,18 @@ spec supra_framework::multisig_voting {
     }
 
     spec is_proposal_resolvable {
-        // use supra_framework::chain_status;
-        // // Ensures existence of Timestamp
-        // requires chain_status::is_operating();
+        use supra_framework::chain_status;
+        // Ensures existence of Timestamp
+        requires chain_status::is_operating();
         //TODO: Remove pragma aborts_if_is_partial;
         pragma aborts_if_is_partial = true;
         // include IsProposalResolvableAbortsIf<ProposalType>;
     }
 
     spec resolve {
-        // use supra_framework::chain_status;
-        // // Ensures existence of Timestamp
-        // requires chain_status::is_operating();
+        use supra_framework::chain_status;
+        // Ensures existence of Timestamp
+        requires chain_status::is_operating();
         //TODO: Remove pragma aborts_if_is_partial;
         pragma aborts_if_is_partial = true;
         // include IsProposalResolvableAbortsIf<ProposalType>;
@@ -207,9 +207,9 @@ spec supra_framework::multisig_voting {
     }
 
     spec is_voting_closed {
-        // use supra_framework::chain_status;
-        // // Ensures existence of Timestamp
-        // requires chain_status::is_operating();
+        use supra_framework::chain_status;
+        // Ensures existence of Timestamp
+        requires chain_status::is_operating();
         //TODO: Remove pragma aborts_if_is_partial;
         pragma aborts_if_is_partial = true;
         include AbortsIfNotContainProposalID<ProposalType>;
@@ -239,11 +239,11 @@ spec supra_framework::multisig_voting {
     }
 
     spec get_proposal_state {
-        // use supra_framework::chain_status;
+        use supra_framework::chain_status;
 
         pragma addition_overflow_unchecked;
         // Ensures existence of Timestamp
-        // requires chain_status::is_operating();
+        requires chain_status::is_operating();
         //TODO: Remove pragma aborts_if_is_partial;
         pragma aborts_if_is_partial = true;
         include AbortsIfNotContainProposalID<ProposalType>;
