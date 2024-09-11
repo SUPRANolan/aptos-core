@@ -11,6 +11,7 @@ use aptos_framework::ReleaseBundle;
 use aptos_storage_interface::DbReaderWriter;
 use aptos_temppath::TempPath;
 use aptos_types::{
+    account_address::AccountAddress,
     chain_id::ChainId,
     on_chain_config::{Features, OnChainJWKConsensusConfig, OnChainRandomnessConfig},
     transaction::Transaction,
@@ -34,7 +35,7 @@ pub struct MainnetGenesisInfo {
     /// Minimum stake to be in the validator set
     pub min_stake: u64,
     /// Minimum number of votes to consider a proposal valid.
-    pub min_voting_threshold: u128,
+    pub min_voting_threshold: u64,
     /// Maximum stake to be in the validator set
     pub max_stake: u64,
     /// Minimum number of seconds to lockup staked coins
@@ -45,6 +46,7 @@ pub struct MainnetGenesisInfo {
     pub rewards_apy_percentage: u64,
     /// Voting duration for a proposal in seconds.
     pub voting_duration_secs: u64,
+    pub voters: Vec<AccountAddress>,
     /// Percent of current epoch's total voting power that can be added in this epoch.
     pub voting_power_increase_limit: u64,
     /// Timestamp for Genesis in microseconds
@@ -103,6 +105,7 @@ impl MainnetGenesisInfo {
             required_proposer_stake: genesis_config.required_proposer_stake,
             rewards_apy_percentage: genesis_config.rewards_apy_percentage,
             voting_duration_secs: genesis_config.voting_duration_secs,
+            voters: genesis_config.voters.clone(),
             voting_power_increase_limit: genesis_config.voting_power_increase_limit,
             genesis_timestamp_in_microseconds: genesis_config.genesis_timestamp_in_microseconds,
             employee_vesting_start,
@@ -126,6 +129,8 @@ impl MainnetGenesisInfo {
         aptos_vm_genesis::encode_aptos_mainnet_genesis_transaction(
             &self.accounts,
             &[],
+            None,
+            &[],
             &[],
             &self.framework,
             self.chain_id,
@@ -134,13 +139,14 @@ impl MainnetGenesisInfo {
                 is_test: false,
                 epoch_duration_secs: self.epoch_duration_secs,
                 min_stake: self.min_stake,
-                min_voting_threshold: self.min_voting_threshold,
+                min_voting_threshold: self.min_voting_threshold as u64,
                 max_stake: self.max_stake,
                 recurring_lockup_duration_secs: self.recurring_lockup_duration_secs,
                 required_proposer_stake: self.required_proposer_stake,
                 rewards_apy_percentage: self.rewards_apy_percentage,
                 voting_duration_secs: self.voting_duration_secs,
                 voting_power_increase_limit: self.voting_power_increase_limit,
+                voters: Vec::new(),
                 genesis_timestamp_in_microseconds: self.genesis_timestamp_in_microseconds,
                 employee_vesting_start: self.employee_vesting_start,
                 employee_vesting_period_duration: self.employee_vesting_period_duration,
