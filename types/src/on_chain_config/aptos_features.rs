@@ -109,7 +109,7 @@ impl FeatureFlag {
             FeatureFlag::STORAGE_SLOT_METADATA,
             FeatureFlag::CHARGE_INVARIANT_VIOLATION,
             FeatureFlag::APTOS_UNIQUE_IDENTIFIERS,
-            FeatureFlag::GAS_PAYER_ENABLED,
+            // FeatureFlag::GAS_PAYER_ENABLED,    //TODO: Disabled until understood and fully supported
             FeatureFlag::BULLETPROOFS_NATIVES,
             FeatureFlag::SIGNER_NATIVE_FORMAT_FIX,
             FeatureFlag::MODULE_EVENT,
@@ -123,7 +123,7 @@ impl FeatureFlag {
             FeatureFlag::SPONSORED_AUTOMATIC_ACCOUNT_V1_CREATION,
             FeatureFlag::FEE_PAYER_ACCOUNT_OPTIONAL,
             FeatureFlag::AGGREGATOR_V2_DELAYED_FIELDS,
-            FeatureFlag::CONCURRENT_TOKEN_V2,
+            // FeatureFlag::CONCURRENT_TOKEN_V2,    //TODO: Disabled until understood and fully supported
             FeatureFlag::LIMIT_MAX_IDENTIFIER_LENGTH,
             FeatureFlag::OPERATOR_BENEFICIARY_CHANGE,
             FeatureFlag::BN254_STRUCTURES,
@@ -131,25 +131,25 @@ impl FeatureFlag {
             FeatureFlag::COMMISSION_CHANGE_DELEGATION_POOL,
             FeatureFlag::WEBAUTHN_SIGNATURE,
             // FeatureFlag::RECONFIGURE_WITH_DKG, //TODO: re-enable once randomness is ready.
-            FeatureFlag::KEYLESS_ACCOUNTS,
-            FeatureFlag::KEYLESS_BUT_ZKLESS_ACCOUNTS,
-            FeatureFlag::JWK_CONSENSUS,
+            // FeatureFlag::KEYLESS_ACCOUNTS,   //TODO: Disabled until understood and fully supported
+            // FeatureFlag::KEYLESS_BUT_ZKLESS_ACCOUNTS,    //TODO: Disabled until understood and fully supported
+            // FeatureFlag::JWK_CONSENSUS,  //TODO: Disabled until understood and fully supported
             FeatureFlag::REFUNDABLE_BYTES,
             FeatureFlag::OBJECT_CODE_DEPLOYMENT,
             FeatureFlag::MAX_OBJECT_NESTING_CHECK,
-            FeatureFlag::KEYLESS_ACCOUNTS_WITH_PASSKEYS,
+            // FeatureFlag::KEYLESS_ACCOUNTS_WITH_PASSKEYS, //TODO: Disabled until understood and fully supported
             FeatureFlag::MULTISIG_V2_ENHANCEMENT,
             FeatureFlag::DELEGATION_POOL_ALLOWLISTING,
             FeatureFlag::MODULE_EVENT_MIGRATION,
             FeatureFlag::REJECT_UNSTABLE_BYTECODE,
             FeatureFlag::TRANSACTION_CONTEXT_EXTENSION,
-            FeatureFlag::COIN_TO_FUNGIBLE_ASSET_MIGRATION,
+            // FeatureFlag::COIN_TO_FUNGIBLE_ASSET_MIGRATION, //TODO: Disabled until understood and fully supported
             FeatureFlag::OBJECT_NATIVE_DERIVED_ADDRESS,
-            FeatureFlag::DISPATCHABLE_FUNGIBLE_ASSET,
+            // FeatureFlag::DISPATCHABLE_FUNGIBLE_ASSET, //TODO: Disabled until understood and fully supported
             FeatureFlag::REMOVE_DETAILED_ERROR_FROM_HASH,
-            FeatureFlag::CONCURRENT_FUNGIBLE_ASSETS,
+            // FeatureFlag::CONCURRENT_FUNGIBLE_ASSETS,    //TODO: Disabled until understood and fully supported
             FeatureFlag::AGGREGATOR_V2_IS_AT_LEAST_API,
-            FeatureFlag::CONCURRENT_FUNGIBLE_BALANCE,
+            // FeatureFlag::CONCURRENT_FUNGIBLE_BALANCE,    //TODO: Disabled until understood and fully supported
             FeatureFlag::LIMIT_VM_TYPE_SIZE,
             FeatureFlag::ABORT_IF_MULTISIG_PAYLOAD_MISMATCH,
         ]
