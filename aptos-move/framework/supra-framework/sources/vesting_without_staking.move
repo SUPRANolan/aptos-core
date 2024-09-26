@@ -287,6 +287,35 @@ module supra_framework::vesting_without_staking {
         }
     }
 
+    public entry fun create_vesting_contract_with_amounts (
+        admin: &signer,
+        shareholders: vector<address>,
+        amounts: vector<u64>,
+        schedule: vector<FixedPoint32>,
+        start_timestamp_secs: u64,
+        period_duration: u64,
+        withdrawal_address: address,
+        contract_creation_seed: vector<u8>,
+    ) acquires AdminStore {
+        assert!(
+            vector::length(&shareholders) == vector::length(&amounts),
+            error::invalid_argument(ESHARES_LENGTH_MISMATCH),
+        );
+        let coins = vector::empty<Coin<SupraCoin>>();
+        vector::for_each_ref(&amounts, |amounts| {
+            let coin = coin::withdraw<SupraCoin>(admin, *amounts);
+            vector::push_back(&mut coins, coin);
+        });
+        let vesting_schedule = create_vesting_schedule(schedule, start_timestamp_secs, period_duration);
+        create_vesting_contract(
+            admin,
+            simple_map::new_from(shareholders, coins),
+            vesting_schedule,
+            withdrawal_address,
+            contract_creation_seed,
+        );
+    }
+
     /// Create a vesting contract with a given configurations.
     public fun create_vesting_contract(
         admin: &signer,
