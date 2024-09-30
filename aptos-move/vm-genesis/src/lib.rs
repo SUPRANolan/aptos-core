@@ -124,6 +124,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
+    supra_config_bytes: Vec<u8>,
 ) -> Transaction {
     assert!(!genesis_config.is_test, "This is mainnet!");
     validate_genesis_config(genesis_config);
@@ -149,6 +150,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
         &consensus_config,
         &execution_config,
         &gas_schedule,
+        supra_config_bytes,
     );
     initialize_features(
         &mut session,
@@ -223,6 +225,7 @@ pub fn encode_genesis_transaction(
     consensus_config: &OnChainConsensusConfig,
     execution_config: &OnChainExecutionConfig,
     gas_schedule: &GasScheduleV2,
+    supra_config_bytes: Vec<u8>,
 ) -> Transaction {
     Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set(
         &aptos_root_key,
@@ -238,6 +241,7 @@ pub fn encode_genesis_transaction(
         consensus_config,
         execution_config,
         gas_schedule,
+        supra_config_bytes,
     )))
 }
 
@@ -255,6 +259,7 @@ pub fn encode_genesis_change_set(
     consensus_config: &OnChainConsensusConfig,
     execution_config: &OnChainExecutionConfig,
     gas_schedule: &GasScheduleV2,
+    supra_config_bytes: Vec<u8>,
 ) -> ChangeSet {
     validate_genesis_config(genesis_config);
 
@@ -276,6 +281,7 @@ pub fn encode_genesis_change_set(
         consensus_config,
         execution_config,
         gas_schedule,
+        supra_config_bytes,
     );
     initialize_features(
         &mut session,
@@ -439,6 +445,7 @@ fn initialize(
     consensus_config: &OnChainConsensusConfig,
     execution_config: &OnChainExecutionConfig,
     gas_schedule: &GasScheduleV2,
+    supra_config_bytes: Vec<u8>,
 ) {
     let gas_schedule_blob =
         bcs::to_bytes(gas_schedule).expect("Failure serializing genesis gas schedule");
@@ -472,6 +479,7 @@ fn initialize(
             MoveValue::U64(APTOS_MAX_KNOWN_VERSION.major),
             MoveValue::vector_u8(consensus_config_bytes),
             MoveValue::vector_u8(execution_config_bytes),
+            MoveValue::vector_u8(supra_config_bytes),
             MoveValue::U64(epoch_interval_usecs),
             MoveValue::U64(genesis_config.min_stake),
             MoveValue::U64(genesis_config.max_stake),
@@ -1124,6 +1132,7 @@ pub fn generate_test_genesis(
         &OnChainConsensusConfig::default_for_genesis(),
         &OnChainExecutionConfig::default_for_genesis(),
         &default_gas_schedule(),
+        b"test".to_vec(),
     );
     (genesis, test_validators)
 }
@@ -1151,6 +1160,7 @@ pub fn generate_mainnet_genesis(
         &OnChainConsensusConfig::default_for_genesis(),
         &OnChainExecutionConfig::default_for_genesis(),
         &default_gas_schedule(),
+        b"test".to_vec(),
     );
     (genesis, test_validators)
 }
@@ -1161,12 +1171,12 @@ fn mainnet_genesis_config() -> GenesisConfiguration {
         allow_new_validators: true,
         epoch_duration_secs: 2 * 3600, // 2 hours
         is_test: false,
-        min_stake: 1_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 1M APT
-        // 400M APT
+        min_stake: 1_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 1M SUPRA
+        // 400M SUPRA
         min_voting_threshold: 2,
-        max_stake: 50_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 50M APT.
+        max_stake: 50_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 50M SUPRA.
         recurring_lockup_duration_secs: 30 * 24 * 3600,         // 1 month
-        required_proposer_stake: 1_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 1M APT
+        required_proposer_stake: 1_000_000 * APTOS_COINS_BASE_WITH_DECIMALS, // 1M SUPRA
         rewards_apy_percentage: 10,
         voting_duration_secs: 7 * 24 * 3600, // 7 days
         voters: vec![
@@ -1748,6 +1758,7 @@ pub fn test_mainnet_end_to_end() {
         aptos_cached_packages::head_release_bundle(),
         ChainId::mainnet(),
         &mainnet_genesis_config(),
+        b"test".to_vec(),
     );
 
     let direct_writeset = if let Transaction::GenesisTransaction(direct_writeset) = transaction {
