@@ -46,7 +46,7 @@ module supra_framework::supra_coin {
         let (burn_cap, freeze_cap, mint_cap) =coin::initialize_with_parallelizable_supply_with_limit<SupraCoin>(
             supra_framework,
             string::utf8(b"Supra Coin"),
-            string::utf8(b"SUP"),
+            string::utf8(b"SUPRA"),
             8, // decimals
             true, // monitor_supply
 			MAX_SUPRA_COIN_SUPPLY,
@@ -74,7 +74,7 @@ module supra_framework::supra_coin {
 
     /// Can only be called during genesis for tests to grant mint capability to aptos framework and core resources
     /// accounts.
-    /// Expects account and APT store to be registered before calling.
+    /// Expects account and SUPRA store to be registered before calling.
     public(friend) fun configure_accounts_for_test(
         supra_framework: &signer,
         core_resources: &signer,
@@ -201,7 +201,7 @@ module supra_framework::supra_coin {
         let (burn_cap, freeze_cap, mint_cap) =coin::initialize_with_parallelizable_supply_with_limit<SupraCoin>(
             supra_framework,
             string::utf8(b"Supra Coin"),
-            string::utf8(b"SUP"),
+            string::utf8(b"SUPRA"),
             8, // decimals
             true, // monitor_supply
             MAX_SUPRA_COIN_SUPPLY,
@@ -241,7 +241,7 @@ module supra_framework::supra_coin {
         account::create_account_for_test(destination_addr);
 
         let name = string::utf8(b"Supra Coin");
-        let symbol = string::utf8(b"SUP");
+        let symbol = string::utf8(b"SUPRA");
 
         aggregator_factory::initialize_aggregator_factory_for_test(&source);
         let (burn_cap,  mint_cap) = initialize(
