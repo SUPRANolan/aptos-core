@@ -291,7 +291,8 @@ module supra_framework::vesting_without_staking {
         admin: &signer,
         shareholders: vector<address>,
         amounts: vector<u64>,
-        schedule: vector<FixedPoint32>,
+        schedule_numerator: vector<u64>,
+        schedule_denominator: vector<u64>,
         start_timestamp_secs: u64,
         period_duration: u64,
         withdrawal_address: address,
@@ -323,6 +324,16 @@ module supra_framework::vesting_without_staking {
         let (contract_signer, contract_signer_cap) = create_vesting_contract_account(admin,
             contract_creation_seed);
         let contract_signer_address = signer::address_of(&contract_signer);
+        let i = 0;
+        let schedule = vector::empty<FixedPoint32>();
+        while (i < vector::length(&schedule_denominator)) {
+            let numerator = vector::borrow(&schedule_numerator, i);
+            let denominator = vector::borrow(&schedule_denominator, i);
+            let event = fixed_point32::create_from_rational(*numerator, *denominator);
+            vector::push_back(&mut schedule, event);
+            i = i + 1;
+        };
+
         let vesting_schedule = create_vesting_schedule(schedule, start_timestamp_secs, period_duration);
         let shareholders_map = simple_map::create<address, VestingRecord>();
         let grant_amount = 0;
