@@ -297,23 +297,75 @@ module supra_framework::vesting_without_staking {
         withdrawal_address: address,
         contract_creation_seed: vector<u8>,
     ) acquires AdminStore {
+        assert!(!system_addresses::is_reserved_address(withdrawal_address),
+            error::invalid_argument(EINVALID_WITHDRAWAL_ADDRESS),);
+        assert_account_is_registered_for_apt(withdrawal_address);
+        assert!(vector::length(&shareholders) > 0,
+            error::invalid_argument(ENO_SHAREHOLDERS));
         assert!(
             vector::length(&shareholders) == vector::length(&amounts),
             error::invalid_argument(ESHARES_LENGTH_MISMATCH),
         );
-        let coins = vector::empty<Coin<SupraCoin>>();
-        vector::for_each_ref(&amounts, |amounts| {
-            let coin = coin::withdraw<SupraCoin>(admin, *amounts);
-            vector::push_back(&mut coins, coin);
-        });
+
+        // If this is the first time this admin account has created a vesting contract, initialize the admin store.
+        let admin_address = signer::address_of(admin);
+        if (!exists<AdminStore>(admin_address)) {
+            move_to(admin,
+                AdminStore {
+                    vesting_contracts: vector::empty<address>(),
+                    nonce: 0,
+                    create_events: new_event_handle<CreateVestingContractEvent>(admin),
+                });
+        };
+
+        // Initialize the vesting contract in a new resource account. This allows the same admin to create multiple
+        // pools.
+        let (contract_signer, contract_signer_cap) = create_vesting_contract_account(admin,
+            contract_creation_seed);
+        let contract_signer_address = signer::address_of(&contract_signer);
         let vesting_schedule = create_vesting_schedule(schedule, start_timestamp_secs, period_duration);
-        create_vesting_contract(
-            admin,
-            simple_map::new_from(shareholders, coins),
-            vesting_schedule,
-            withdrawal_address,
-            contract_creation_seed,
+        let shareholders_map = simple_map::create<address, VestingRecord>();
+        let grant_amount = 0;
+        vector::for_each_ref(&amounts, |amount| {
+            coin::transfer<SupraCoin>(admin, contract_signer_address, *amount);
+            let shareholder = vector::pop_back(&mut shareholders);
+            simple_map::add(&mut shareholders_map,
+                shareholder,
+                VestingRecord {
+                    init_amount: *amount,
+                    left_amount: *amount,
+                    last_vested_period: vesting_schedule.last_vested_period,
+                }
+            );
+            grant_amount = grant_amount + *amount;
+        });
+        assert!(grant_amount > 0, error::invalid_argument(EZERO_GRANT));
+
+        let admin_store = borrow_global_mut<AdminStore>(admin_address);
+        vector::push_back(&mut admin_store.vesting_contracts, contract_signer_address);
+        emit_event(&mut admin_store.create_events,
+            CreateVestingContractEvent {
+                withdrawal_address,
+                grant_amount,
+                vesting_contract_address: contract_signer_address,
+            },
         );
+
+        move_to(&contract_signer,
+            VestingContract {
+                state: VESTING_POOL_ACTIVE,
+                admin: admin_address,
+                shareholders:shareholders_map,
+                beneficiaries: simple_map::create<address, address>(),
+                vesting_schedule,
+                withdrawal_address,
+                signer_cap: contract_signer_cap,
+                set_beneficiary_events: new_event_handle<SetBeneficiaryEvent>(&contract_signer),
+                vest_events: new_event_handle<VestEvent>(&contract_signer),
+                terminate_events: new_event_handle<TerminateEvent>(&contract_signer),
+                admin_withdraw_events: new_event_handle<AdminWithdrawEvent>(&contract_signer),
+                shareholder_removed_events: new_event_handle<ShareHolderRemovedEvent>(&contract_signer),
+            });
     }
 
     /// Create a vesting contract with a given configurations.
