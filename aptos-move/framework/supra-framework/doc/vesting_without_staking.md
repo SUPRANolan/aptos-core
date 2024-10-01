@@ -1114,7 +1114,7 @@ Create a vesting schedule with the given schedule of distributions, a vesting st
 
 
 
-<pre><code><b>public</b> entry <b>fun</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_create_vesting_contract_with_amounts">create_vesting_contract_with_amounts</a>(admin: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>, shareholders: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<b>address</b>&gt;, amounts: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;, schedule_numerator: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;, schedule_denominator: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;, start_timestamp_secs: u64, period_duration: u64, withdrawal_address: <b>address</b>, contract_creation_seed: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u8&gt;)
+<pre><code><b>public</b> entry <b>fun</b> <a href="vesting_without_staking.md#0x1_vesting_without_staking_create_vesting_contract_with_amounts">create_vesting_contract_with_amounts</a>(admin: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>, shareholders: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<b>address</b>&gt;, amounts: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;, schedule_numerator: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;, schedule_denominator: u64, start_timestamp_secs: u64, period_duration: u64, withdrawal_address: <b>address</b>, contract_creation_seed: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u8&gt;)
 </code></pre>
 
 
@@ -1128,7 +1128,7 @@ Create a vesting schedule with the given schedule of distributions, a vesting st
     shareholders: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;<b>address</b>&gt;,
     amounts: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;,
     schedule_numerator: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;,
-    schedule_denominator: <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector">vector</a>&lt;u64&gt;,
+    schedule_denominator: u64,
     start_timestamp_secs: u64,
     period_duration: u64,
     withdrawal_address: <b>address</b>,
@@ -1160,33 +1160,28 @@ Create a vesting schedule with the given schedule of distributions, a vesting st
     <b>let</b> (contract_signer, contract_signer_cap) = <a href="vesting_without_staking.md#0x1_vesting_without_staking_create_vesting_contract_account">create_vesting_contract_account</a>(admin,
         contract_creation_seed);
     <b>let</b> contract_signer_address = <a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer_address_of">signer::address_of</a>(&contract_signer);
-    <b>let</b> i = 0;
-    <b>let</b> schedule = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_empty">vector::empty</a>&lt;FixedPoint32&gt;();
-    <b>while</b> (i &lt; <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_length">vector::length</a>(&schedule_denominator)) {
-        <b>let</b> numerator = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_borrow">vector::borrow</a>(&schedule_numerator, i);
-        <b>let</b> denominator = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_borrow">vector::borrow</a>(&schedule_denominator, i);
-        <b>let</b> <a href="event.md#0x1_event">event</a> = <a href="../../aptos-stdlib/../move-stdlib/doc/fixed_point32.md#0x1_fixed_point32_create_from_rational">fixed_point32::create_from_rational</a>(*numerator, *denominator);
-        <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> schedule, <a href="event.md#0x1_event">event</a>);
-        i = i + 1;
-    };
+    <b>let</b> schedule = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_map_ref">vector::map_ref</a>(&schedule_numerator, |numerator| {
+        <b>let</b> <a href="event.md#0x1_event">event</a> = <a href="../../aptos-stdlib/../move-stdlib/doc/fixed_point32.md#0x1_fixed_point32_create_from_rational">fixed_point32::create_from_rational</a>(*numerator, schedule_denominator);
+        <a href="event.md#0x1_event">event</a>
+    });
 
     <b>let</b> vesting_schedule = <a href="vesting_without_staking.md#0x1_vesting_without_staking_create_vesting_schedule">create_vesting_schedule</a>(schedule, start_timestamp_secs, period_duration);
     <b>let</b> shareholders_map = <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_create">simple_map::create</a>&lt;<b>address</b>, <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestingRecord">VestingRecord</a>&gt;();
     <b>let</b> grant_amount = 0;
-    <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_for_each_ref">vector::for_each_ref</a>(&amounts, |amount| {
-        <a href="coin.md#0x1_coin_transfer">coin::transfer</a>&lt;SupraCoin&gt;(admin, contract_signer_address, *amount);
+    <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_for_each_reverse">vector::for_each_reverse</a>(amounts, |amount| {
         <b>let</b> shareholder = <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_pop_back">vector::pop_back</a>(&<b>mut</b> shareholders);
         <a href="../../aptos-stdlib/doc/simple_map.md#0x1_simple_map_add">simple_map::add</a>(&<b>mut</b> shareholders_map,
             shareholder,
             <a href="vesting_without_staking.md#0x1_vesting_without_staking_VestingRecord">VestingRecord</a> {
-                init_amount: *amount,
-                left_amount: *amount,
+                init_amount: amount,
+                left_amount: amount,
                 last_vested_period: vesting_schedule.last_vested_period,
             }
         );
-        grant_amount = grant_amount + *amount;
+        grant_amount = grant_amount + amount;
     });
     <b>assert</b>!(grant_amount &gt; 0, <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="vesting_without_staking.md#0x1_vesting_without_staking_EZERO_GRANT">EZERO_GRANT</a>));
+    <a href="coin.md#0x1_coin_transfer">coin::transfer</a>&lt;SupraCoin&gt;(admin, contract_signer_address, grant_amount);
 
     <b>let</b> admin_store = <b>borrow_global_mut</b>&lt;<a href="vesting_without_staking.md#0x1_vesting_without_staking_AdminStore">AdminStore</a>&gt;(admin_address);
     <a href="../../aptos-stdlib/../move-stdlib/doc/vector.md#0x1_vector_push_back">vector::push_back</a>(&<b>mut</b> admin_store.vesting_contracts, contract_signer_address);

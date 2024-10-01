@@ -292,7 +292,7 @@ module supra_framework::vesting_without_staking {
         shareholders: vector<address>,
         amounts: vector<u64>,
         schedule_numerator: vector<u64>,
-        schedule_denominator: vector<u64>,
+        schedule_denominator: u64,
         start_timestamp_secs: u64,
         period_duration: u64,
         withdrawal_address: address,
@@ -324,33 +324,28 @@ module supra_framework::vesting_without_staking {
         let (contract_signer, contract_signer_cap) = create_vesting_contract_account(admin,
             contract_creation_seed);
         let contract_signer_address = signer::address_of(&contract_signer);
-        let i = 0;
-        let schedule = vector::empty<FixedPoint32>();
-        while (i < vector::length(&schedule_denominator)) {
-            let numerator = vector::borrow(&schedule_numerator, i);
-            let denominator = vector::borrow(&schedule_denominator, i);
-            let event = fixed_point32::create_from_rational(*numerator, *denominator);
-            vector::push_back(&mut schedule, event);
-            i = i + 1;
-        };
+        let schedule = vector::map_ref(&schedule_numerator, |numerator| {
+            let event = fixed_point32::create_from_rational(*numerator, schedule_denominator);
+            event
+        });
 
         let vesting_schedule = create_vesting_schedule(schedule, start_timestamp_secs, period_duration);
         let shareholders_map = simple_map::create<address, VestingRecord>();
         let grant_amount = 0;
-        vector::for_each_ref(&amounts, |amount| {
-            coin::transfer<SupraCoin>(admin, contract_signer_address, *amount);
+        vector::for_each_reverse(amounts, |amount| {
             let shareholder = vector::pop_back(&mut shareholders);
             simple_map::add(&mut shareholders_map,
                 shareholder,
                 VestingRecord {
-                    init_amount: *amount,
-                    left_amount: *amount,
+                    init_amount: amount,
+                    left_amount: amount,
                     last_vested_period: vesting_schedule.last_vested_period,
                 }
             );
-            grant_amount = grant_amount + *amount;
+            grant_amount = grant_amount + amount;
         });
         assert!(grant_amount > 0, error::invalid_argument(EZERO_GRANT));
+        coin::transfer<SupraCoin>(admin, contract_signer_address, grant_amount);
 
         let admin_store = borrow_global_mut<AdminStore>(admin_address);
         vector::push_back(&mut admin_store.vesting_contracts, contract_signer_address);
