@@ -18,6 +18,9 @@ use std::{
 const MULTISIG_ACCOUNT_DOMAIN_SEPARATOR: &[u8] = b"supra_framework::multisig_account";
 const STAKING_CONTRACT_DOMAIN_SEPARATOR: &[u8] = b"supra_framework::staking_contract";
 const VESTING_POOL_DOMAIN_SEPARATOR: &[u8] = b"supra_framework::vesting";
+
+/// A Rust version of the Move constant with the same name defined in genesis.move.
+const VESTING_CONTRACT_SEED: &[u8] = b"VESTING_WIHOUT_STAKING_SEED";
 const PBO_MODULE_SALT: &str = "supra_framework::pbo_delegation_pool";
 
 /// A wrapper struct that gives better error messages when the account address
