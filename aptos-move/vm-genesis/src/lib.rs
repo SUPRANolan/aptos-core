@@ -121,6 +121,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     owner_group: Option<MultiSigAccountSchema>,
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
+    initial_unlock_vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
@@ -172,8 +173,11 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     // All PBO delegated validators are initialized here
     create_pbo_delegation_pools(&mut session, delegation_pools);
 
-    // All employee accounts are initialized here
+    // PBO vesting accounts, employees, investors etc. are placed in their vesting pools
     create_vesting_without_staking_pools(&mut session, vesting_pools);
+
+    // Lock up the remaining available balances of the accounts for TGE
+    create_vesting_without_staking_pools(&mut session, initial_unlock_vesting_pools);
 
     set_genesis_end(&mut session);
 
@@ -219,6 +223,7 @@ pub fn encode_genesis_transaction(
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
+    initial_unlock_vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
@@ -235,6 +240,7 @@ pub fn encode_genesis_transaction(
         validators,
         delegation_pools,
         vesting_pools,
+        initial_unlock_vesting_pools,
         framework,
         chain_id,
         genesis_config,
@@ -253,6 +259,7 @@ pub fn encode_genesis_change_set(
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
     vesting_pools: &[VestingPoolsMap],
+    initial_unlock_vesting_pools: &[VestingPoolsMap],
     framework: &ReleaseBundle,
     chain_id: ChainId,
     genesis_config: &GenesisConfiguration,
@@ -322,8 +329,11 @@ pub fn encode_genesis_change_set(
         // All PBO delegated validators are initialized here
         create_pbo_delegation_pools(&mut session, delegation_pools);
 
-        // All employee accounts are initialized here
+        // PBO vesting accounts, employees, investors etc. are placed in their vesting pools
         create_vesting_without_staking_pools(&mut session, vesting_pools);
+
+        // Lock up the remaining available balances of the accounts for TGE
+        create_vesting_without_staking_pools(&mut session, initial_unlock_vesting_pools);
     }
 
     if genesis_config.is_test {
@@ -1021,7 +1031,7 @@ pub fn test_genesis_change_set_and_validators(
     generate_test_genesis(aptos_cached_packages::head_release_bundle(), count)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Validator {
     /// The Aptos account address of the validator or the admin in the case of a commissioned or
     /// vesting managed validator.
@@ -1102,6 +1112,7 @@ pub fn generate_test_genesis(
         validators,
         &[],
         &[],
+        &[],
         framework,
         ChainId::test(),
         &GenesisConfiguration {
@@ -1152,6 +1163,7 @@ pub fn generate_mainnet_genesis(
         &[],
         None,
         validators,
+        &[],
         &[],
         &[],
         framework,
@@ -1217,7 +1229,7 @@ pub struct EmployeePool {
     pub beneficiary_resetter: AccountAddress,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ValidatorWithCommissionRate {
     pub validator: Validator,
     pub validator_commission_percentage: u64,
@@ -1225,7 +1237,7 @@ pub struct ValidatorWithCommissionRate {
     pub join_during_genesis: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DelegatorConfiguration {
     pub owner_address: AccountAddress,
     pub delegation_pool_creation_seed: Vec<u8>,
@@ -1234,7 +1246,7 @@ pub struct DelegatorConfiguration {
     pub delegator_stakes: Vec<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct PboDelegatorConfiguration {
     pub delegator_config: DelegatorConfiguration,
     //Address of the multisig admin of the pool
@@ -1249,7 +1261,7 @@ pub struct PboDelegatorConfiguration {
     pub unlock_period_duration: u64,
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize, Hash)]
 pub struct VestingPoolsMap {
     // Address of the admin of the vesting pool
     pub admin_address: AccountAddress,
@@ -1755,6 +1767,7 @@ pub fn test_mainnet_end_to_end() {
         None,
         &pbo_delegator_configs,
         &[employee_vesting_config1],
+        &[],
         aptos_cached_packages::head_release_bundle(),
         ChainId::mainnet(),
         &mainnet_genesis_config(),
