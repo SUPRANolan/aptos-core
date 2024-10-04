@@ -76,7 +76,7 @@ const NUM_SECONDS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 const MICRO_SECONDS_PER_SECOND: u64 = 1_000_000;
 const APTOS_COINS_BASE_WITH_DECIMALS: u64 = u64::pow(10, 8);
 
-const PBO_DELEGATION_POOL_LOCKUP_PERCENTAGE: u64 = 90;
+pub const PBO_DELEGATION_POOL_LOCKUP_PERCENTAGE: u64 = 90;
 
 pub struct GenesisConfiguration {
     pub allow_new_validators: bool,
