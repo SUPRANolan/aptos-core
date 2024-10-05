@@ -115,7 +115,7 @@ pub fn default_gas_schedule() -> GasScheduleV2 {
     }
 }
 
-pub fn encode_aptos_mainnet_genesis_transaction(
+pub fn encode_supra_mainnet_genesis_transaction(
     accounts: &[AccountBalance],
     multisig_accounts: &[MultiSigAccountWithBalance],
     owner_group: Option<MultiSigAccountSchema>,
@@ -218,7 +218,7 @@ pub fn encode_aptos_mainnet_genesis_transaction(
     Transaction::GenesisTransaction(WriteSetPayload::Direct(change_set))
 }
 
-pub fn encode_genesis_transaction(
+pub fn encode_genesis_transaction_for_testnet(
     aptos_root_key: Ed25519PublicKey,
     validators: &[Validator],
     delegation_pools: &[PboDelegatorConfiguration],
@@ -232,7 +232,7 @@ pub fn encode_genesis_transaction(
     gas_schedule: &GasScheduleV2,
     supra_config_bytes: Vec<u8>,
 ) -> Transaction {
-    Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set(
+    Transaction::GenesisTransaction(WriteSetPayload::Direct(encode_genesis_change_set_for_testnet(
         &aptos_root_key,
         &[],
         &[],
@@ -251,7 +251,7 @@ pub fn encode_genesis_transaction(
     )))
 }
 
-pub fn encode_genesis_change_set(
+pub fn encode_genesis_change_set_for_testnet(
     core_resources_key: &Ed25519PublicKey,
     accounts: &[AccountBalance],
     multisig_account: &[MultiSigAccountWithBalance],
@@ -1104,7 +1104,7 @@ pub fn generate_test_genesis(
     let validators_: Vec<Validator> = test_validators.iter().map(|t| t.data.clone()).collect();
     let validators = &validators_;
 
-    let genesis = encode_genesis_change_set(
+    let genesis = encode_genesis_change_set_for_testnet(
         &GENESIS_KEYPAIR.1,
         &[],
         &[],
@@ -1157,7 +1157,7 @@ pub fn generate_mainnet_genesis(
     let validators_: Vec<Validator> = test_validators.iter().map(|t| t.data.clone()).collect();
     let validators = &validators_;
 
-    let genesis = encode_genesis_change_set(
+    let genesis = encode_genesis_change_set_for_testnet(
         &GENESIS_KEYPAIR.1,
         &[],
         &[],
@@ -1761,7 +1761,7 @@ pub fn test_mainnet_end_to_end() {
         pbo_config_val6,
     ];
 
-    let transaction = encode_aptos_mainnet_genesis_transaction(
+    let transaction = encode_supra_mainnet_genesis_transaction(
         &accounts,
         &[],
         None,
