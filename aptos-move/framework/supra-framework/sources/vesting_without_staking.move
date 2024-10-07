@@ -300,7 +300,7 @@ module supra_framework::vesting_without_staking {
     ) acquires AdminStore {
         assert!(!system_addresses::is_reserved_address(withdrawal_address),
             error::invalid_argument(EINVALID_WITHDRAWAL_ADDRESS),);
-        assert_account_is_registered_for_apt(withdrawal_address);
+        assert_account_is_registered_for_supra(withdrawal_address);
         assert!(vector::length(&shareholders) > 0,
             error::invalid_argument(ENO_SHAREHOLDERS));
         assert!(
