@@ -13,7 +13,7 @@ module supra_framework::vesting_without_staking {
     use aptos_std::math64::min;
 
     use supra_framework::account::{Self, SignerCapability, new_event_handle};
-    use supra_framework::supra_account::{assert_account_is_registered_for_apt};
+    use supra_framework::supra_account::{assert_account_is_registered_for_supra};
     use supra_framework::supra_coin::SupraCoin;
     use supra_framework::coin::{Self, Coin};
     use supra_framework::event::{EventHandle, emit_event};
@@ -384,7 +384,7 @@ module supra_framework::vesting_without_staking {
     ): address acquires AdminStore {
         assert!(!system_addresses::is_reserved_address(withdrawal_address),
             error::invalid_argument(EINVALID_WITHDRAWAL_ADDRESS),);
-        assert_account_is_registered_for_apt(withdrawal_address);
+        assert_account_is_registered_for_supra(withdrawal_address);
         let shareholders_address = &simple_map::keys(&buy_ins);
         assert!(vector::length(shareholders_address) > 0,
             error::invalid_argument(ENO_SHAREHOLDERS));
@@ -495,19 +495,17 @@ module supra_framework::vesting_without_staking {
         let next_period_to_vest = last_vested_period + 1;
         let last_completed_period = (timestamp::now_seconds() - vesting_schedule.start_timestamp_secs)
             / vesting_schedule.period_duration;
+
         // Index is 0-based while period is 1-based so we need to subtract 1.
-        while (last_completed_period >= next_period_to_vest && vesting_record.left_amount
-            > 0) {
+        while (last_completed_period >= next_period_to_vest && vesting_record.left_amount > 0) {
             let schedule_index = next_period_to_vest - 1;
             let vesting_fraction = if (schedule_index < vector::length(schedule)) {
                 *vector::borrow(schedule, schedule_index)
             } else {
                 // Last vesting schedule fraction will repeat until the grant runs out.
-                *vector::borrow(schedule, vector::length(schedule) - 1) };
+                *vector::borrow(schedule, vector::length(schedule) - 1)
+            };
             vest_transfer(vesting_record, signer_cap, beneficiary, vesting_fraction);
-            //update last_vested_period for the shareholder
-            vesting_record.last_vested_period = next_period_to_vest;
-            next_period_to_vest = next_period_to_vest + 1;
 
             emit_event(&mut vesting_contract.vest_events,
                 VestEvent {
@@ -517,7 +515,11 @@ module supra_framework::vesting_without_staking {
                     period_vested: next_period_to_vest,
                 },
             );
+            next_period_to_vest = next_period_to_vest + 1;
         };
+
+        //update last_vested_period for the shareholder
+        vesting_record.last_vested_period = next_period_to_vest - 1;
     }
 
     fun vest_transfer(
@@ -631,7 +633,7 @@ module supra_framework::vesting_without_staking {
     ) acquires VestingContract {
         // Verify that the beneficiary account is set up to receive SUPRA. This is a requirement so distribute() wouldn't
         // fail and block all other accounts from receiving SUPRA if one beneficiary is not registered.
-        assert_account_is_registered_for_apt(new_beneficiary);
+        assert_account_is_registered_for_supra(new_beneficiary);
 
         let vesting_contract = borrow_global_mut<VestingContract>(contract_address);
         verify_admin(admin, vesting_contract);
